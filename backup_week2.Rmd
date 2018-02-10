@@ -1,0 +1,210 @@
+---
+title: "week_2_607"
+author: "Justin Herman"
+date: "February 8, 2018"
+output: html_document
+
+---
+
+### Load in packages 
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
+library(RMySQL)
+library(ggplot2)
+library(dplyr)
+
+```
+### SQL code to create a db/table in SQL
++ The code should not be executed, it needs to be run in sql
+``````{r}
+#DROP TABLE IF EXISTS Ratings;
+
+#Create database Movies_db;
+#use Movies_db;
+#CREATE TABLE Ratings (
+#`Person` VARCHAR(100) PRIMARY KEY,
+#`Gladiator`  int  NOT NULL,
+#`Dark Knight`  int  NOT NULL,
+#`Grandmas Boy`  int NOT NULL,
+#`Shaun Of The Dead`  int NOT NULL,
+#`Kill Bill`  int NOT NULL,
+#`ZombieLand`  int NOT NULL
+#);
+
+
+#INSERT into Ratings (`Person`,`Gladiator`, `Dark Knight`,`Grandmas Boy`,	`Shaun Of The Dead`,`Kill Bill`,`ZombieLand`)
+#VALUES ("Miller",5,5,5,3,5,4),
+#("brian",5,5,4,5,5,4),
+#("Ariel",4,4,5,4,3,2),
+#("Justin",5,4,5,3,5,4),
+#("Joia",4,5,1,4,3,5),
+#("Stephan",5,5,3,3,3,4),
+#("Briana",3,5,5,2,1,2),
+#("Rotten_Tomatoes",76,94,16,92,85,90),
+#("User_Scores_RT",87,94,85,93,81,90);
+
+
+
+#select * from Ratings
+
+```
+
+
+```{r, echo=FALSE}
+
+```
+
+### Connect to db
++ Run query to select entire table
++edited out the user and pw
+
+```{r}
+mydb = dbConnect(MySQL(), user=user, password=my_pass, dbname='movies_db', host='localhost')
+user_movie_ratings <- dbGetQuery(mydb, "select * from Ratings ")
+user_movie_ratings
+
+```
+
++ Alternatively, we can use R markdown SQL Chunk to run sql code query after we setup our connection
+```{sql connection=mydb}
+SELECT * FROM Ratings Where `Shaun Of The Dead` =3
+
+```
+## Data Manipulation
++  Add user scores and critics scores from Rotten Tomatoes
++ These scores are on a scale of 1-100
+    + Scale them as 1-5
+```{r, echo=FALSE} 
+library(pander)
+
+#options(knitr.table.format = "latex")
+table_2<-read.table(text="
+RT_SCORE replacement
+0-20 1
+21-40 2
+41-60 3
+61-80 4
+81-100 5
+" ,  header=TRUE, stringsAsFactors=FALSE)
+pander(table_2)
+
+```
+
+```{r}
+user_movie_ratings[c(7,9),2:7]<- sweep(user_movie_ratings[c(7,9),2:7],1,c(20,20,20,20,20,20),"/")
+user_movie_ratings[c(7,9),2:7] <- ceiling(user_movie_ratings[c(7,9),2:7])
+```
+
+## Display how each movie does with all of our "critics"
+```{r}
+
+users <- c("Ariel","Brian","Briana","Joia","Justin","Miller","Rotten_Tomatoes","Stephan","User_scores_RT")
+movie_list <- list(Gladiator=user_movie_ratings$Gladiator, Dark_Knight=user_movie_ratings$`Dark Knight`,Grandmas_Boy=user_movie_ratings$`Grandmas Boy`,Shaun_Of_The_dead=user_movie_ratings$`Shaun Of The Dead`,Kill_Bill=user_movie_ratings$`Kill Bill`,Zombie_Land =user_movie_ratings$ZombieLand)
+                 
+dat <- lapply(movie_list, function(x) cbind(x = seq_along(x), y = x))
+list_my_names <- names(dat)
+lns <- sapply(dat, nrow)
+dat <- as.data.frame(do.call("rbind", dat))
+dat$group <- rep(list_my_names, lns)
+my_vector=user_movie_ratings$Person
+my_big_vec <- rep(my_vector,6)
+dat$x <- users
+
+library(ggplot2)
+ggplot(dat, aes(x = dat$x, y = dat$y, colour = dat$group)) +
+    theme_bw() +
+    geom_jitter(size=5)+
+    theme(axis.text.x=element_text(angle=60, hjust=1))
+#matplot(user_movie_ratings$Gladiator)
+```
+### Observations
++ Movies like Zombie Land and Grandmas Boy have very polarized results
++ Gladiator and Dark Knight are very highly rated
++ Shaun of the dead has the most scores of 3(3)
++ Grouping results by movie will very quickly become difficult to interpret in visual form
+
+## Lets explore the overall tendencies in our critics ratings
+
+```{r}
+
+
+ggplot(dat, aes(x = dat$x, y = dat$y, colour = dat$x)) +
+    theme_bw() +
+    geom_jitter(size=7)+
+  theme(axis.text.x=element_text(angle=60, hjust=1))
+```
+
+## Much Cleaner: lets summarize some results
++ All of the females in the list tend to give more unfavorable ratings
++ Rotten Tomatoes User_scores give every movie on this list a 5 
++ Stephan tends to give the most scores of around 3   
++ Briana gives the lowest scores overall
+
+
+## Average the scores my friends submitted 
++ Join average friends score with Rotten Tomatoes scores 
++ Added inline comments
+```{r}
+# Create an empty list and fill with average score of each movie
+N <- 7
+average_scores <- vector("list", N)
+for(i in 2:N) {
+    Ps <- mean(user_movie_ratings[,i]) 
+    average_scores[[i]] <- Ps
+}
+
+# Add average scores to an unlisted vector and round scores to appropriate values
+average_scores <- (average_scores[2:7])
+friends_avg <- unlist(average_scores)
+friends_avg <- ceiling(friends_avg)
+names <- "Friends_avg" 
+friends_avg <- append(friends_avg, names, after=0)
+
+## Subset old data to get the RT user and critics scores
+rotten_tomatoes_subset <- subset(user_movie_ratings,Person== "Rotten_Tomatoes" | Person == "User_Scores_RT")
+
+##combine subset data with friends_avg vector 
+comparison_df <- rbind(rotten_tomatoes_subset,friends_avg)
+comparison_df
+
+```
+
+## Graph clustering our scores by the the reviewers(RT_users,RT_critics, My_friends) 
+```{r}
+movie_list <- list(Gladiator=comparison_df$Gladiator, Dark_Knight=comparison_df$`Dark Knight`,Grandmas_Boy=comparison_df$`Grandmas Boy`,Shaun_Of_The_dead=comparison_df$`Shaun Of The Dead`,Kill_Bill=comparison_df$`Kill Bill`,Zombie_Land =comparison_df$ZombieLand)
+
+dat_2 <- lapply(movie_list, function(x) cbind(x = seq_along(x), y = x))
+list_my_names <- names(dat_2)
+lns <- sapply(dat_2, nrow)
+dat_2 <- as.data.frame(do.call("rbind", dat_2))
+dat_2$group <- rep(list_my_names, lns)
+my_vector_2=comparison_df$Person
+my_big_vec <- rep(my_vector_2,6)
+dat_2$x <- my_big_vec
+
+ggplot(dat_2, aes(x = dat_2$x, y = dat_2$y, colour = dat_2$x)) +
+    theme_bw() +
+    geom_jitter(size=10)
+
+```
+
+## That was a fun experiment.  Lets Expore problems with the experimental design
+### Discrete rating system
++ Having only 5 ratings to choose from, leaves a very large range for what each rating really means
+    + Questions such as "is 5 perfect?" and "what if i want to rate it by 100?" were presented by respondents
++ Presenting these movies together may Bias our results
+    + Many of my friends asked questions such as "am I comparing these movies to each other?"  
+        + As a large scaled survey, we would want to choose from a larger pool of movies and randomize which selections people were presented.
+    + Another Issue brought up was " Am i rating these movies by genre, or overall movie"
+        + Perhaps we would want to create strata by genre and present genre based rating surveys
+
+### Our study wasn't blinded
++ Non randomized movie selection
+    + Overall poor practice for experimental design.  
+    + It is possible our low women scores can be attributed to my gender bias in movie selection
+    
+
+
+
