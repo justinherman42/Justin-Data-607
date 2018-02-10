@@ -1,0 +1,179 @@
+---
+title: "homework_607_week1"
+output: html_document
+---
+## Justin Herman
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(stringr)
+library(XML)
+library(maps)
+library(data.table)
+library(dplyr)
+library(psych)
+library(sjmisc)
+library(ggplot2) 
+```
+### Use package data.table to load in mushroom Dataset
+```{r}
+mydat <- fread("http://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data")
+#head(mydat)
+#dim(mydat)
+
+```
+
+
+### Add approproate names to data columns
+```{r}
+
+
+
+
+names(mydat) <- c("classes","cap_shape","cap_surface","cap_color","bruises","odor","gill_attachment","gill_spacing","gill_size","gill_color","stalk_shape","stalk_root","Surface_above","surface_below","color_above","color_below","veil_type","veil_color","ring_number","ring_type","spore_color","population","habitat")
+```
+
+
+### Create Subset of data.  
++ New dataframe "my_shrooms" contains columns(classes,cap_shape,cap_color,habitat,population)
++ Mutate is performed on all columns to replace the df entries with appropriate variable names
+```{r}
+my_shrooms <- subset(mydat,select=c(classes,cap_shape,cap_color,habitat,population))
+exp_df <- my_shrooms
+my_shrooms <- mutate(my_shrooms,classes=case_when(classes=="e"~"edible",classes=="p"~"poisonous"))
+my_shrooms <- mutate(my_shrooms,cap_shape=case_when(cap_shape=="b"~"bell",cap_shape=="c"~"conical",cap_shape=="x"~"convex",cap_shape=="f"~"flat",cap_shape=="k"~"knobbed",cap_shape=="s"~"sunken"))
+my_shrooms <- mutate(my_shrooms,cap_color=case_when(cap_color=="n"~"brown",cap_color=="b"~"buff",cap_color=="c"~"cinnamon",cap_color=="g"~"gray",cap_color=="r"~"green",cap_color=="p"~"pink",cap_color=="u"~"purple",cap_color=="e"~"red",cap_color=="w"~"white",cap_color=="y"~"yellow"))
+my_shrooms <- mutate(my_shrooms,habitat=case_when(habitat=="g"~"grasses",habitat=="l"~"leaves",habitat=="m"~"meadows",habitat=="u"~"urban",habitat=="w"~"waste",habitat=="d"~"woods",habitat=="p"~"paths"))
+my_shrooms <- mutate(my_shrooms,population=case_when(population=="a"~"abundant",population=="c"~"clustered",population=="n"~"numerous",population=="s"~"scattered",population=="v"~"several",population=="y"~"solitary"))
+
+
+head(my_shrooms,50)
+```
+
+### For loop to convert categorical string data into type factor
+```{r}
+#summary(my_shrooms)
+#head(subset(my_shrooms, select = 'cap_shape'))
+#names(my_shrooms)
+#count(my_shrooms, "cap_shape")
+#names(my_shrooms)
+#str(my_shrooms)
+#my_shrooms<- as.factor(my_shrooms)
+#str((my_shrooms$classes))
+
+for (x in c(names(my_shrooms))){
+    my_shrooms[x] <- factor(unlist(my_shrooms[x]))
+}
+
+summary(my_shrooms)
+
+
+```
+### Lets try to figure out how our columns breakdown as either: edible or poisonous
+```{r}
+for( x in names(my_shrooms)){print(flat_table(my_shrooms, classes,x))
+}
+#store these values in flat_table$colname
+for(i in seq_along(names(my_shrooms))){
+    nam <- paste("flat_table",names(my_shrooms)[i],sep="") 
+    assign(nam,flat_table(my_shrooms, classes,names(my_shrooms)[i]))
+}
+# alternative solution to avoid assign()
+# create list of flat_tables
+N <- 5
+x <- vector("list", N)
+for(i in 1:N) {
+    Ps <- flat_table(my_shrooms, classes,names(my_shrooms)[i]) 
+    x[[i]] <- Ps
+}
+names(x) <-  c("my_flat_table_1", "my_flat_table_2", "my_flat_table_3","my_flat_table_4","my_flat_table_5")
+
+my_flat_table_1
+```
+### Graphically displayed
+```{r}
+counts <- table(my_shrooms$classes, my_shrooms$cap_shape)
+barplot(counts, main="Edible VS Poisonous by shape",
+  xlab="Mushroom shapes", col=c("darkblue","red"),
+ 	legend = rownames(counts), beside=TRUE)
+counts <-table(my_shrooms$classes, my_shrooms$cap_color)
+barplot(counts, main="Edible VS Poisonous by color",
+  xlab="Mushroom shapes", col=c("darkblue","red"),
+ 	legend = rownames(counts), beside=TRUE)
+counts <-table(my_shrooms$classes, my_shrooms$population)
+barplot(counts, main="Edible VS Poisonous by class_population",
+  xlab="Mushroom class_population", col=c("darkblue","red"),
+ 	legend = rownames(counts), beside=TRUE)
+counts <-table(my_shrooms$classes, my_shrooms$habitat)
+barplot(counts, main="Edible VS Poisonous by habitat",
+  xlab="Mushroom habitat", col=c("darkblue","red"),
+ 	legend = rownames(counts), beside=TRUE)
+```
+
+### Observations from Data
++ Color doesn't appear to be all that valuable in predicting the danger of our mushrooms
+    + The Scale of these bar graphs can be deceiving, further statistical analysis is needed
++ Shapes like "knobbed and Bell" seem like they may be good predictors
++ Populations "several and scattered" appear to be somewhat significant predictors
++ Habitat appears to be valuable as well with several categories(paths,leaves,grasses,woods) showing a significant difference
+
+
+<span style="color:red; font-family:Georgia; font-size:2em;">Everything that follows from here was code experimentation.</span>
+
+
+### The homework implied we would discuss interesting ideas so I figured I would try to develop a workaround on the monotonous and drawn out mutate code I used to change data inputs in the dataframe. I attempted to automate our data entry manipulation with less code.   I found an idea from stackoverflow to manipulate the entries by using a table with two columns(our df columnvalues, replacement strings).  The ifelse statement was taken from a stack overflow answer linked below
+### [Stack overflow link](https://stackoverflow.com/questions/48565655/substitute-values-in-all-columns-of-dataframe-based-in-other-dataframe)
+```{r}
+
+table2<-read.table(text="
+df_val replacement
+g grasses
+l leaves
+m meadows
+p paths
+u urban
+w waste
+d woods
+e edible
+s scattered
+n numerous
+v several
+a abundant
+c clustered
+y solitary
+b bell
+x convex
+f flat
+k knobbed
+" ,  header=TRUE, stringsAsFactors=FALSE)
+
+
+exp_df_2<- as.data.frame(lapply(exp_df, function(x)  ifelse(grepl(paste(table2$df_val, collapse = '|'), x), 
+                                                  table2$replacement[match(x, table2$df_val)], x)))
+
+head(exp_df_2,50)
+
+```
+### To me writing out a table like this is much more efficient than copy pasting code and manually inserting different variables over and over. Unfortunately this idea failed before it could begin.  Several columns have shared initial values (c=conical, c=cinnamon,c= clustered)  
++   This could be useful for data with larger strings that aren't repetitive from column to column, but I couldn't figure out a workaround.  
+
+
+### I thought about creating a double for loop to loop through a list of tables, each table being a column from our data set and its replacement value. Then to loop through df column names. 
++ The Below code will not run its hypothetical
+```{r}
+
+
+#for datatable in list(datatables) for  x in names(exp_df){ifelse(grepl(paste(df$x, collapse = '&'), list of tables),
+##table that returns true from list[match......]
+```
+
+
+###  Having to make seperate datatables for each column, is in itself already alot of code.  It seems like I am probably attempting to reinvent the wheel and I  would also need a different function then grepl to accomplish what i want.  But the original code that built my exp_df_2 has some use value, although it can be dangerous if applied without fully understanding our dataset
+
+```{r}
+
+
+```
+
