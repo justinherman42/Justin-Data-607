@@ -1,0 +1,156 @@
+---
+title: "Untitled"
+author: "Justin Herman"
+date: "February 12, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Input raw_data String and attempt to extract numbers with different Regular Expressions
+
+```{r}
+library(stringr)
+ raw.data <- "555-1239Moe Szyslak(636) 555-0113Burns, C. Montgomery555-6542Rev. Timothy Lovejoy555 8904Ned Flanders636-555-3226Simpson,Homer5553642Dr. Julius Hibbert"
+Simpson_name <- (str_extract_all(raw.data, "[[:alpha:]., ]{2,}"))
+Simpson_name <- unlist(Simpson_name)
+my_numbers <-unlist(str_extract_all(raw.data, "\\d+(\\-| )\\d+"))
+my_numbers
+get_the_numbers<-str_extract_all(raw.data,"\\d+(\\s|\\-|\\d|\\))+")
+get_the_numbers
+```
+
+## 1. Create first and Last Simpson_name vectors.  
++ Use str_detect and str_split to populate vectors 
+
+```{r}
+Simpson_name
+first <- c()
+last <- c()
+for (x in Simpson_name){
+    if  (x=="Simpson,"){
+        last <- append(last,"Simpson")
+    }   
+    else if (str_detect(x,",")==TRUE){
+    trials <- unlist(str_split(x,",", n=2))
+    first <- append(first,trials[2])
+    last <- append(last,trials[1])
+    }
+    else if (str_detect(x,"\\.")==TRUE){
+    trials <- unlist(str_split(x,"\\. ", n=2))
+    full_Simpson_name <- trials[2]
+    full_Simpson_name <- unlist(str_split(full_Simpson_name,"\\s"))
+    first <- append(first,full_Simpson_name[1])
+    last <- append(last,full_Simpson_name[2])
+    }
+    else if (x=="Homer"){
+        first <- append(first,x)
+    }
+    else { trials <- unlist(str_split(x," "))
+       # while (is.na(trials)==FALSE){
+        first <- append(first,trials[1])
+        last <- append(last,trials[2])
+     }
+}
+
+First_Last_names <- str_c(first,last, sep=" ")
+
+print (First_Last_names)
+
+
+
+```
+
+## 2. Construct a Logical vector indicating whether a charachter has a title 
++ Two solutions provided
+```{r}
+##
+rev <- str_detect(Simpson_name,("Rev"))
+doctor <- str_detect(Simpson_name,("Dr"))
+prefix_check <- rev|doctor
+simpson_character_has_prefix_Simpson_name <- cbind(First_Last_names,Simpson_name,prefix_check)
+simpson_character_has_prefix_Simpson_name
+
+## Alternative Solution check for Dr. and rev. 
+check <- str_detect(Simpson_name,"[DrRev]{2,3}\\.")
+check
+
+```
+## 3. Constuct a logical Vector indicating wheter a character has a second name
+```{r}
+two_Simpson_names <- str_replace_all(Simpson_name,"[DRrev]{2,3}\\.","")
+#two_Simpson_names
+count_Simpson_names <- str_count(two_Simpson_names, "\\w+")
+vector_Simpson_namescheck <- str_detect(count_Simpson_names,"3")
+```
+
+## Vector returning True if middle name exists
+```{r}
+vector_Simpson_namescheck
+```
+## Dataframe summarizing results so far
+```{r}
+count_Simpson_names <- str_replace_all(count_Simpson_names,"2"," No middle name")
+count_Simpson_names <- str_replace_all(count_Simpson_names,"3","middle name")
+simpsons_df <- as.data.frame(cbind(First_Last_names,prefix_check,count_Simpson_names))
+simpsons_df
+    
+```
+##Question 4
+###1  "[0-9]+\\$"))
+
++ String 1 will find any combination of numbers that ends with a "$" sign
+```{r}
+string_1 <- "xx44445$xxxx4589$"
+unlist(str_extract_all(string_1, "[0-9]+\\$"))
+
+
+```
+### 2 \\b[a-z]{1,4}\\b
+
++ words of size 1-4 that only use letters 
+```{r}
+string_2 <- "fourty four fourtyfor fort fa4 ra_p"
+unlist(str_extract_all(string_2, "\\b[a-z]{1,4}\\b"))
+```
+### 3 .*?\\.txt$
+
++ Reluctant- string that ends with .txt
+```{r}
+string_3 <-c("Doesn't end with.txt.","does2end with .txt.txt")
+unlist(str_extract_all(string_3,".*?\\.txt$"))
+
+```
+### 4  \\d{2}/\\d{2}/\\d{4}
++ 2digits / 2 digits/ 4 digits   
++ Looks like a date format although its not restricted to 12 months and 30 days
+```{r}
+string_4 <- c("12/24/2018", "14/44/4040")
+unlist(str_extract_all(string_4,"\\d{2}/\\d{2}/\\d{4}"))
+
+```
+### 5 <(.+?)>.+?</\\1>"))
+
++ tags with any values in between, then a / followed by a back reference to the first tag (.+?) closed with  > 
+```{r}
+tags <- c("<this_tag_matches_end><any_tag>continue my message 434<tag_3></this_tag_matches_end>")
+unlist(str_extract_all(tags, "<(.+?)>.+?</\\1>"))
+```
+
+## 9. 
+
+```{r}
+secret <- paste("clcopCow1zmstc0d87wnkig7OvdicpNuggvhryn92Gjuwczi8hqrfpRxs5Aj5dwpn0Tanwo",
+                "Uwisdij7Lj8kpf03AT5Idr3coc0bt7yczjatOaootj55t3Nj3ne6c4Sfek.r1w1YwwojigO",
+                "d6vrfUrbz2.2bkAnbhzgv4R9i05zEcrop.wAgnb.SqoU65fPa1otfb7wEm24k6t3sR9zqe5",
+                "fy89n6Nd5t9kc4fE905gmc4Rgxo5nhDk!gr")
+uppercased <-unlist(str_extract_all(secret,"[[:upper:]|.]{1}"))
+
+uppercased
+message <- str_replace_all(uppercased,"\\.", " ")
+yahtzee <- paste(message,collapse="")
+yahtzee
+```
+
