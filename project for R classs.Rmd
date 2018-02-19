@@ -1,0 +1,119 @@
+---
+title: "project"
+author: "Justin Herman"
+date: "February 17, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Read in text file as string and import Libraries
+```{r}
+library(stringr)
+library(readr)
+library(plyr)
+library(dplyr)
+library(data.table)
+mystring <- read_file("tournamentinfo.txt")
+```
+
+## Extract Column Names and state names using regular expressions
+```{r}
+
+states <- c()
+column_names <- unlist(str_extract_all(mystring,"\\w+"))[1:11]
+states_2 <- str_split(unlist(str_extract_all(mystring,"[A-Z]+[:blank:]\\|")),"\\s+")
+for (x in 1:64){
+states <- append(states,states_2[[x]][1])
+}
+column_names
+```
+## Extract data in between the | |
++ split data by |
+```{r}
+trial <- unlist(str_extract_all(mystring,"\\|.*|$"))[1:400]
+splited_trial <- str_split(trial[3:130],"\\|")
+splited_trial[1:5]
+```
+## Create blank vectors to populate with chess names, aggregated matches played, player starting rank, and player chess points
++ Use regular expression to populate these vectors
+```{r}
+
+chess_names<- c()
+matches <- c()
+start_ranks <- c()
+chess_points <- c()
+
+##If block grabs ranks from splited_trial[[even#'s]] 
+##Else catches the rest or splited_trial[[odd#'s]]
+for (x in 1:length(splited_trial)){
+    if (x%%2==0){
+        splited_trial[[x]]<-splited_trial[[x]][2]
+        splited_trial[[x]] <- unlist(str_split(unlist(str_extract(splited_trial[[x]][1],":\\s+[[:digit:]]+")),"\\s+"))[2]
+        start_ranks <- append(start_ranks,splited_trial[[x]])
+    }
+    else {
+        chess_names <- append(chess_names,splited_trial[[x]][2])
+        chess_points <- append(chess_points,splited_trial[[x]][3])
+        splited_trial[[x]] <- str_split(splited_trial[[x]] ,"[:blank:]+")
+        for (index in 4:10){
+            matches <- append(matches,splited_trial[[x]][[index]][2])
+        }
+    }
+}
+```
+
+## Trim and Clean data 
+```{r}
+
+chess_points <- as.numeric(str_trim(chess_points))
+chess_names <- str_trim(chess_names)
+matches[matches==""] <- NA
+start_ranks <- as.numeric(start_ranks)
+matches <- as.numeric(matches) 
+chess_names <- str_trim(chess_names)
+```
+
+## Split aggreagated matches data into matches by player
++ Map ranking values from another df into my matches by player df 
+    + Example matches by player= 39,21,18,14,7,12,4 becomes player_ranks 1605 1469 1564 1574 1501 1519 1372
+```{r}
+matches_by_player <- split(matches, ceiling(seq_along(matches)/7))
+element_1 <- matches_by_player
+element_1 <- as_data_frame(element_1)
+df_start_ranks <- as_data_frame(start_ranks)
+df_start_ranks <- cbind(1:64,df_start_ranks)
+
+temp_df<- as.data.frame(lapply(element_1, function(x)  ifelse(grepl(paste(df_start_ranks$`1:64`, collapse = '|'), x), 
+                                                  df_start_ranks$value[match(x, df_start_ranks$`1:64`)], x)))
+## find means of the rank of opponents
+average_opp_rank <- round(colMeans(temp_df,na.rm=TRUE),0)
+
+
+```
+
+## Display all the vectors that were created and combine them into a dataframe
+```{r}
+average_opp_rank <- as.vector(average_opp_rank)
+chess_names
+start_ranks
+chess_points
+states
+finished_chess_rankings <- as_data_frame(cbind(chess_names,states,chess_points,start_ranks,average_opp_rank))
+
+finished_chess_rankings
+
+write.csv(finished_chess_rankings, file="finished_chess_rankings.csv")
+```
+
+
+
+
+
+
+
+
+
