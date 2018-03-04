@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Week_5_Tidy_Data"
 author: "Justin Herman"
 date: "February 27, 2018"
 output:
@@ -23,7 +23,7 @@ library(kableExtra)
 library(tidyr)
 library(dplyr)
 my_flight <- read.csv("flight_data.txt")
-
+my_flight
 ```
 
 ## Must address the blank Airline rows
@@ -46,14 +46,14 @@ my_flight$Airline <- fix_columns(my_flight,my_flight$Airline)
 kable(my_flight)
 ```
 
-## Can i apply this function in the tidyverse instead?
+## Can I apply this function in the tidyverse instead?
 ```{r}
 my_flight_2 <- as_data_frame(read.csv("flight_data.txt")) %>% 
     mutate(Airline=fix_columns(.,.$Airline))
 kable(my_flight_2)
 ```
 
-## Lets tidy the dataframe
+## Let's tidy the dataframe
 + New dataframe consists of individual summaries by airline and city
 + The tidyverse is impressively concise 
 ```{r}
@@ -121,7 +121,7 @@ kable(delay_by_city)
 + Airline Specific
     + In the above comparison I chose to focus on the percantage by airline as opposed to the raw numbers(although I do some raw number displays)
         + In choosing this approach, depending on the difference in overall sample size, such analysis can lead to misleading results due to variance
-        + Such analysis can't account for confoudning vairables.  Perhaps Alaska only flys on certain days/times of the week, where there are less overall delays  
+        + Such analysis can't account for confoudning vairables.  Perhaps Alaska only offers flights on certain days/times of the week where there are less overall delays  
     + Tentative conclusion, Alaska airlines outperforms AM west in every single city we looked at in terms of arrival delays.
 
 + City specific 
