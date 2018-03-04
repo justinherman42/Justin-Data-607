@@ -1,0 +1,130 @@
+---
+title: "Untitled"
+author: "Justin Herman"
+date: "February 27, 2018"
+output:
+  html_document:
+    theme: cerulean
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars, message=FALSE}
+rm (list=ls())
+library(tidyverse)
+library(plyr)
+library(knitr)
+require(kableExtra)
+library(kableExtra)
+library(tidyr)
+library(dplyr)
+my_flight <- read.csv("flight_data.txt")
+
+```
+
+## Must address the blank Airline rows
+```{r,message=FALSE}
+kable(my_flight)
+fix_columns <- function (df,col){
+    for (x in seq_along(col)){
+        if (!is.na(col[x])){
+            y <- col[x]
+        }
+        else {
+            col[x] <- y
+        }
+    }
+    df$col <- col
+    return (df$col)
+}
+
+my_flight$Airline <- fix_columns(my_flight,my_flight$Airline)
+kable(my_flight)
+```
+
+## Can i apply this function in the tidyverse instead?
+```{r}
+my_flight_2 <- as_data_frame(read.csv("flight_data.txt")) %>% 
+    mutate(Airline=fix_columns(.,.$Airline))
+kable(my_flight_2)
+```
+
+## Lets tidy the dataframe
++ New dataframe consists of individual summaries by airline and city
++ The tidyverse is impressively concise 
+```{r}
+tidy_flight <- my_flight_2 %>% 
+    select(-X) %>% 
+    gather(City,N,3:7) %>% 
+    spread(Arrival,N) %>% 
+    mutate(City=str_replace(City,"\\."," ")) %>%    
+    plyr::rename(.,c('on time'= 'on_time'))
+    
+kable(tidy_flight)
+
+
+```
+
+
+
+## Exploratory analysis of flight delays
++ First table below summarizes the percentage of flights that were delayed by airline in each city
++ Second table gives the average percentage of flight delayed by airline irregardless of city
++ Third table shows the average total amount of delayed flights by airline over all the airports
++ Fourth tables combines both airlines and looks at city wide statistics of total departures and delay by city
+
+```{r}
+
+delay_by_airline <- tidy_flight %>% 
+    mutate(delay_freq=round(delayed/(on_time+delayed)*100,2)) %>% 
+    select(Airline, City, delay_freq) %>% 
+    spread(City,delay_freq) %>% 
+    plyr::rename(.,c('Airline'= 'Airline- percent of late takeoffs by City'))  
+kable(delay_by_airline)
+
+
+tidy_flight %>% 
+  dplyr::group_by(Airline,City, delayed,on_time) %>% 
+  dplyr::summarize(.) %>%
+    mutate(total_flight=delayed+on_time) %>% 
+    dplyr::group_by(Airline) %>% 
+    plyr::rename(.,c('Airline'= 'Airline- average percent of late takeoffs by airline')) %>% 
+    dplyr::summarize(mean_delayed_flights_percantage=mean(delayed/total_flight)*100) %>% 
+    kable()
+    
+
+
+mean_airline_arriveal_stats <-  tidy_flight %>% 
+    select(Airline,delayed,City, on_time) %>% 
+    dplyr::group_by(Airline) %>% 
+    dplyr::summarize(average_airport_delay_total_per_airport=mean(delayed))
+kable(mean_airline_arriveal_stats)
+
+    
+delay_by_city <- tidy_flight %>% 
+    mutate(total_flights=delayed+on_time) %>% 
+    mutate(delay_freq=round(delayed/(on_time+delayed)*100,2)) %>%  
+    dplyr::group_by(Delay_by_city=City) %>% 
+    dplyr::summarize(freq_of_delay_percantage=mean(delay_freq),total_takeoffs=sum(total_flights))
+kable(delay_by_city)    
+
+
+#mutate(total_flights=delaye+on_time)
+
+```
+
+## Conclusions
++ Airline Specific
+    + In the above comparison I chose to focus on the percantage by airline as opposed to the raw numbers(although I do some raw number displays)
+        + In choosing this approach, depending on the difference in overall sample size, such analysis can lead to misleading results due to variance
+        + Such analysis can't account for confoudning vairables.  Perhaps Alaska only flys on certain days/times of the week, where there are less overall delays  
+    + Tentative conclusion, Alaska airlines outperforms AM west in every single city we looked at in terms of arrival delays.
+
++ City specific 
+    + Phoneix seems to have the best ratio of delayed/ontime, and it has the most flights.  
+    + It doesn't appear that this correlation extends to a more general observation that more flights correlates with less departure delays.  San Diego and Los angeles have two of the lowest departure delays, yet have two of the lowest flight takeoffs as well.
+.
