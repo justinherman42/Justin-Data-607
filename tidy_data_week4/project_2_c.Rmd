@@ -1,0 +1,226 @@
+---
+title: "project_2_c"
+author: "Justin Herman"
+date: "March 11, 2018"
+output:
+  html_document:
+    theme: cerulean
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+library(stringr)
+library(readr)
+library(plyr)
+library(dplyr)
+library(data.table)
+library(readxl)
+require(xlsx)
+library(rJava)
+library(xlsx)
+
+```
+
+
+# Third Dataset- Gapminder
++ Burcu recommended the Gapminder data website
++ [link to source](https://www.gapminder.org/data/)
+
+
+## War or food?
++ Are nations dealing with war more food insecure?
++ How do state expenditures differ on war versus food?
+
+## Load in third dataset 
++ File 1 is a file with death rates out of 100k from war  [link to source](https://docs.google.com/spreadsheets/d/15kseoFj-w39TvMl_Ije-C2TZy-DKYyECsF-uGdec0z8/pub)
++ File 2 is a measurement of daily calories consumption    [link to source](https://docs.google.com/spreadsheets/d/14G6CjF6NblTGf6kkQclpXp3XZ3D4Nkw1I92DB4fOjXo/pub)
+
++ File 3 is GDP War expenditure %                           [link to source](https://docs.google.com/spreadsheets/d/1HXH3ncdQLFpOXVNdC2nkPCSGz_perkfPcBeU1e2HF24/pub)
+
++ File 4 is GDP Agricultural Expenditure %                   [link to source](https://docs.google.com/spreadsheets/d/16JAXDjaKcyaEfd6sO_pRC892NG8VAk6moyw3Gl50-Ys/pub)
+
+```{r}
+delete.na <- function(DF, n=0) {
+  DF[rowSums(is.na(DF)) <= n,]
+}
+
+
+War<- read.xlsx("War.xlsx", header=TRUE,1,)
+food_security <- read.xlsx("indicator food_consumption.xlsx", header=TRUE,1,)
+Agricultural_expend<- read.xlsx("Agricultural_expenditure.xlsx", header=TRUE,1,)
+military_expend <- read.xlsx("military_expenditure.xlsx", header=TRUE,1,)
+
+dim(food_security)
+dim(military_expend)
+dim(Agricultural_expend)
+dim(War)
+```
+
+## DF Preparation 
++ Eliminate rows with substantial NA's
++ Convert columns to numeric 
++ Rename columns to avoid duplication of Column names for eventual Join
++ Filter df's for common shared year range of 1988-2007
+```{r}
+military_expend <- delete.na(military_expend, 20)
+Agricultural_expend <- delete.na(Agricultural_expend, 15)
+food_security <- delete.na(food_security, 20)
+War <- as_data_frame(lapply(War, function(x) if(is.numeric(x)) round(x,2) else x))
+military_expend <- as_data_frame(lapply(military_expend, function(x) if(is.numeric(x)) round(x,2) else x))
+War <- War[2:4]
+colnames(War) <- c("Country", 'war_2002','war_2004')
+colnames(military_expend) <-  c("Country",paste(1988:2011,'Military_expend'))
+colnames(food_security) <- c("Country",paste (1961:2007,"food_security"))
+colnames(Agricultural_expend) <- c("Country",paste(1961:2011,"Agricultural_expend"))
+Agricultural_expend <- Agricultural_expend[c(1,29:48)]
+food_security <- food_security[c(1,29:48)]
+military_expend <- military_expend[c(1:21)]
+
+
+merged_df_3<- inner_join(War,military_expend) %>%
+    inner_join(.,food_security) %>% 
+    inner_join(.,Agricultural_expend)  
+dim(merged_df_3)
+
+```
+
+
+## Exploratory Analysis of Death from wars data 
++ Explore war death df
+```{r}
+merged_df_3$war_2002-merged_df_3$war_2004
+
+
+merged_df_3[1:3] %>% 
+    mutate(.,average_deaths=(war_2002+war_2004)/2) %>% 
+    arrange(.,average_deaths) %>%  
+    kable(.)
+ 
+```
+
+## Tidy dataset
++ Add average deaths from war column
++ Create a categorical factor level of ``deaths from war``
+    + >0 No_Deaths 
+    + >0-1 Low_Deaths 
+    + >1-10 Moderate_Deaths 
+    + >10+ High_Deaths
+
+```{r}
+food_war <- merged_df_3 %>% 
+    gather(Wars,Values,4:63) %>% 
+    separate(.,Wars,into= c("Year", "Type"),sep=" ") %>% 
+    spread(Type,Values) %>% 
+    mutate(.,average_deaths=(war_2002+war_2004)/2) %>% 
+    select(-c(war_2002,war_2004)) %>% 
+    mutate(Deaths_from_war=cut(average_deaths, breaks=c(-1,0,1,10,Inf), labels= c("No_Deaths", "Low_Deaths", "Moderate_Deaths", "High_Deaths")))
+   
+    
+
+kable(food_war[1:50,])
+```
+
+## Summary Explorations
+```{r}
+
+food_war <-food_war %>% 
+    dplyr::group_by(Deaths_from_war,Year)
+agricultural_spending_by_year <- food_war %>% 
+    dplyr::summarize(agri_exp_mean=mean(Agricultural_expend, na.rm = TRUE)) 
+food_war %>% 
+    dplyr::summarize(Military_Spending_Pct_GDP_By_Year=mean(Military_expend, na.rm = TRUE)) %>% 
+    kable(.)
+food_security_by_year <- food_war %>% 
+    dplyr::summarize(my_mean=mean(food_security, na.rm = TRUE))
+
+food_war <-food_war %>% 
+    dplyr::group_by(Deaths_from_war)
+food_war %>% 
+    dplyr::summarize(Mean_Agricultural_Spending_Pct_GDP=mean(Agricultural_expend, na.rm = TRUE)) %>% 
+    kable(.)
+food_war %>% 
+    dplyr::summarize(Mean_Military_Spending_Pct=mean(Military_expend, na.rm = TRUE)) %>% 
+    kable(.)
+food_war %>% 
+    dplyr::summarize(mean_Caloric_consuimption=mean(food_security, na.rm = TRUE)) %>% 
+    kable(.)
+  
+```
+
+## Warnings about observations
++ My categories aren't of even sizes so my clustering could effect my observations and lead to large impact from outliers
++ I don't have an overall GDP per country, this could make a big difference in relative % GDP expenditures
++ Tentative Observations
+    + Areas with the most death from wars seem to spend more of their GDP on agricultural expenditures
+    + Areas with the most deaths don't spend much on military expenditures, and low death areas actually spend more than high death areas 
+    + High and moderate death areas are significantly more food insecure. Calorie consumption is about 30% lower in these areas
+
+
+
+
+## Data Visualization 
+```{r}
+food_security_by_year
+
+food_security_by_year %>% 
+    ggplot(.,aes(x=Year,y=my_mean))+
+    geom_bar(aes(fill = Deaths_from_war), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ Caloric consumption seems rather Flat in all the categories over the last three decades
+
+
+```{r}
+agricultural_spending_by_year %>% 
+    ggplot(.,aes(x=Year,y=agri_exp_mean))+
+    geom_bar(aes(fill = Deaths_from_war), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ As a percent of GDP agricultural expenditure has decreased across all categories over last three decades
++ Area's with higher casualties of war seem to have made large cuts to expenditures
+
+
+## Most interesting graphs and observations
++ A handful of outliers were removed for better visualization 
+
+```{r}
+
+
+
+food_war %>% 
+    ggplot(.,aes(x=Agricultural_expend,y=food_security,shape=Deaths_from_war,color=Deaths_from_war))+
+    geom_point()
+```
+
+### Graph 1 Agricultural Exp vs Food Security
++ Two Clear Clusters develop in the first graph
+    + Areas with high death rates seem to be the least food secure and simultaneously spend the most on agricultural subsidy
+    + Areas with low death rates spends the least on food subsidy, and are the most food secure
+
+
+```{r}
+food_war %>% 
+    filter(.,Military_expend <20) %>% 
+    ggplot(.,aes(x=Military_expend,y=food_security,shape=Deaths_from_war,color=Deaths_from_war))+
+    geom_point()
+        
+
+
+
+
+```
+
+
+### Graph 2 Military Exp vs Food Security 
++ Areas with low death rates seem to spend the most on the Military
+
+

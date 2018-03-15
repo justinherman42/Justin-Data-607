@@ -1,0 +1,217 @@
+---
+title: "Project_2_b"
+author: "Justin Herman"
+date: "March 11, 2018"
+output:
+  html_document:
+    theme: cerulean
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+library(stringr)
+library(readr)
+library(plyr)
+library(dplyr)
+library(data.table)
+library(readxl)
+require(xlsx)
+library(rJava)
+library(xlsx)
+```
+
+
+## World Bank Info For Infant Mortality And Tuberculosis
++ **Binish recommended this dataset website**
++ [link to source](http://apps.who.int/gho/data/node.country.country)
+    + **Update I believe this link went dead.  I'll send the csv's with upload**
++ **Randomly chose 4 countires with the letter `U`**
++ **Read in files individually/with functional**
+```{r}
+
+#Manually Load in CSV
+Uganda<- read.csv("uganda.csv",na.strings=c("","NA"))
+Ukraine <- read.csv("Ukraine.csv",na.strings=c("","NA"))
+United_kingdom <- read.csv("United_Kingdom.csv",na.strings=c("","NA"))
+United_states <- read.csv("United_states.csv",na.strings=c("","NA"))
+
+
+# Functional to load csv
+files <- c("Uganda.csv", "Ukraine.csv", "United_Kingdom.csv", "United_states.csv")
+temp = files
+myfiles <-lapply(temp,read.csv)
+```
+
+
+## Join On Shared Row Index Values(Survey Questions)
++ **This will decrease our sample to only those questions that are answered in every dataset**
+```{r,message=FALSE,warning=FALSE}
+
+merged_df<- inner_join(United_states,United_kingdom) %>% 
+    inner_join(.,Ukraine) %>% 
+    inner_join(.,Uganda)
+
+# With Functional data
+merged_df_2<- inner_join(myfiles[[1]],myfiles[[2]]) %>% 
+    inner_join(myfiles[[3]]) %>%   
+    inner_join(myfiles[[4]])
+
+```
+
+```{r}
+kable(merged_df_2[1:15,])
+```
+
+
+
+## Tidy Dataset
+
++  **Gather all country data into one column**
++  **Create a year column to map to the df**
++  **Spread the questions into columns with their values**
+
+```{r}
+
+getting_tidy <- merged_df[-(1),] %>% 
+    gather(United_states,Values,2:57) %>% 
+    mutate(Year=rep(unlist(lapply(2015:2002,function(x) rep(x,23))),4)) %>% 
+    spread(X, Values) 
+kable(getting_tidy[1:10,])
+
+```    
+
+## Get Rid Of Special Characters ``]`` ``[``  ``-``    
++ **Create standardized spacing in each value of DF  for next pipe of tidying**
++ **Use pipe to Tidy ``Mean[min-max]`` columns into Mean,Min and Max columns for respected columns**
+```{r}
+
+getting_tidy <-  as_data_frame(lapply(getting_tidy,function(x){ str_replace_all(x,"\\]|\\["," ")}))
+getting_tidy <-  as_data_frame(lapply(getting_tidy,function(x){ str_replace_all(x,"-","  ")}))
+
+
+
+final_df <- getting_tidy %>% 
+    separate(.,`Incidence of tuberculosis (per 100 000 population per year)`,into=c('Mean_Incidence_Tuberculosis_100,000','Min_Tuberculosis',"Max_Tuberculosis")) %>% 
+    separate(.,`Antiretroviral therapy coverage among people with HIV infection eligible for ART according to 2010 guidelines (%)`,into=c('Mean_Antiretroviral_coverage','Min_Antiretroviral_coverage','Max_Antiretroviral_coverage')) %>% 
+    separate(.,`Infant mortality rate (probability of dying between birth and age 1 per 1000 live births)`,into=c('Mean_Infant mortality_Rate/1000','Min_Infant_Mortality rate',"Max_Infant_Mortality_Rate"),sep= "  ") %>% 
+    separate(.,`Under-five mortality rate (probability of dying by age 5 per 1000 live births)`,into=c('Mean_Under-five_Mortality_Rate/1000','Min_Under-five_Mortality_Rate',"Max_Under-five_Mortality_Rate"), sep="  ") %>% 
+    separate(.,`Tuberculosis treatment coverage`,into=c('Mean_Tuberculosis_Coverage','Min_Tuberculosis_Coverage',"Max_Tuberculosis_Coverage"))
+
+
+```
+
+
+##  More Piping
++ **First column needs to be renamed to ``Country`` column **
++ **Eliminate the ``.integers`` after the values in ``Country`` column**
++ **Get rid of some columns**
++ **Trim DF**
++ **Convert columns to numeric for analysis**
+
+```{r}
+final_df %<>% 
+    plyr::rename(.,c('United_states'= 'Country')) %>% 
+    mutate(Country=rep(c("Uganda","Ukraine","United_Kingdom","United_States"),each=14)) %>% 
+    select(colnames(.)[c(1,2,10,11,12,13,14,15,16,17,21,22,23,30,31,32,33,34,35)]) %>% 
+    arrange(.,`Country`)  
+
+final_df[] <- lapply(final_df,function(x){ str_trim(x)}) 
+final_df[3:19] <- lapply(final_df[3:19],function(x) as.numeric(as.character(x))) 
+final_df <- as_data_frame(final_df)
+kable(final_df)
+```  
+
+## Visual Exploratory Analysis Of Infant Mortality
++ **GNP By Year**
++ **Infant Mortality Rate by year**
++ **Numerical vector of Infant Mortality Rate by year**
+
+```{r}
+final_df %>%
+    mutate(GNP=as.numeric(`Gross national income per capita (PPP int. $)`)) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=GNP))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))+
+    labs(title="GNP By Year")
+    
+final_df %>%
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Infant mortality_Rate/1000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+
+final_df_display <- final_df %>% 
+    arrange(Country,Year) %>% 
+    select(.,Country,`Mean_Infant mortality_Rate/1000`)
+
+```
+
++ **Uganda seems to have reduced it's infant mortality rate by over 50%**
+
+## Numerical Display Of Infant Mortality
+```{r}
+## Numerical display     
+kable(final_df_display)
+```
+
+## Display Of Infant Mortality With The 3 Samples Closer In Scale
+
+```{r}
+final_df %>%
+    dplyr::filter(., Country %in% c("United_Kingdom", "Ukraine","United_States")) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Infant mortality_Rate/1000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+
+
+final_df
+```
+
++ **Ukraine has seen a reduction of around 40%**
++ **US and UK have also seen a reduction, however UK seems to have a more substantial reduction(30%) over the US reduction of (17%)**
+
+
+## Look At Tuberculosis
+
+```{r}
+final_df
+
+
+final_df %>%
+    dplyr::filter(., Country %in% c("Uganda", "Ukraine","United_Kingdom","United_States")) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Incidence_Tuberculosis_100,000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ **Uganda seems to have seen some moderate improvement over the past 13 years in tuberculosis, but the rate is relatively high still**
++ **Ukraine seems to have had a similar improvement**
+
+## Look At Tuberculosis In Heavily Industrialized Nations( UK, US)
+
+```{r}
+final_df %>%
+    dplyr::filter(., Country %in% c("United_Kingdom","United_States")) %>% 
+    dplyr::group_by(Country) %>% 
+    ggplot(., aes(x=Year ,y=`Mean_Incidence_Tuberculosis_100,000`))+ 
+    geom_bar(aes(fill = Country), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))
+```
+
++ **England appears to have made some moderate improvement in the past several years**
++ ***Tuberculosis in the United states is almost non-existant and it appears it is decreasing**
+
+
+
+

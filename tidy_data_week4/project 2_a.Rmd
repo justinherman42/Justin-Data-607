@@ -1,0 +1,118 @@
+---
+title: "project 2a"
+author: "Justin Herman"
+date: "March 8, 2018"
+output:
+  html_document:
+    theme: cerulean
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load in libraries
+
+
+```{r, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+library(stringr)
+library(readr)
+library(plyr)
+library(dplyr)
+library(data.table)
+library(readxl)
+require(xlsx)
+library(rJava)
+library(xlsx)
+rm (list=ls())
+```
+
+## Tidy dataset 1: Movies database
++ Posted by Betsy
++ [link to source](https://docs.google.com/spreadsheets/d/1K_a87dxLQR91GwVcqkqZK9kjxcYDl1tbK9EX9WvC7bo/edit#gid=601448852)
+
+## Load in Data from xlsx file
++ Dataframe requires tidying
+    + Join individual movies into one movies column
+    + Separate timestamp by day and time
+        + Could perform some interesting time series analysis on the effects of time of day of review
+    + Omit NA Values( the file read in 100+ extra rows of NA) 
+    + Convert 0's to NA assuming that 0's meant the person didn't see the movie
+        + This could be a bad assumption and perverse the data
+        + Two reviewers didnt review a single movie, so I will filter them out
+```{r}
+movies <- as.data.frame(read.xlsx("Movie Ratings.xlsx", header=TRUE,1))
+#tail(movies)
+#dim(movies)
+
+movies%<>% 
+    gather(Movies,Movie_rating,3:12) %>% 
+    select(Timestamp,Reviewer=Name,Movies,Movie_rating,Number.of.Movies.Seen) %>%   
+    separate('Timestamp',c("day","time")," ") %>% 
+    na.omit() %>% 
+    arrange(Reviewer) %>% 
+  #  mutate(Reviewer==Name) %>% 
+    replace(.==0,NA) %>% 
+    filter(Movie_rating>0)
+
+
+    
+movies %>% 
+    dplyr::group_by(Movies) %>% 
+    dplyr::summarise(Movie_rating=round(mean(Movie_rating,na.rm=TRUE),2)) %>% 
+    kable(.)
+```
+
+## data Visualization
++ Display average rating by user
++ Display average rating by movie
++ Subset and display active critics(people who have seen over 5 movies) average ratings
++Display average rating by movie from active critics
+```{r}
+
+movies %>%  
+    dplyr::group_by(Reviewer) %>% 
+    dplyr::summarise(Average_Review=round(mean(Movie_rating,na.rm=TRUE),2)) %>% 
+    arrange(desc(Average_Review)) %>% 
+    ggplot(., aes(x=Reviewer , Average_Review)) + 
+    geom_bar(aes(fill = Reviewer), position = "dodge", stat = "identity")+
+    coord_flip()+
+    labs(title="Average Rating By User")
+
+movies %>%  
+    dplyr::group_by(Movies) %>% 
+    dplyr::summarise(Average_Review=round(mean(Movie_rating,na.rm=TRUE),2)) %>% 
+    arrange(desc(Average_Review)) %>% 
+    ggplot(., aes(x=Movies , Average_Review)) + 
+    geom_bar(aes(fill = Movies), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))+
+    labs(title="Average Rating By Movie")
+    
+ movies %>%  
+    dplyr::group_by(Reviewer) %>% 
+    filter(Number.of.Movies.Seen>5) %>% 
+    dplyr::summarise(Average_Review=round(mean(Movie_rating,na.rm=TRUE),2)) %>% 
+    ggplot(., aes(x=Reviewer , Average_Review)) + 
+    geom_bar(aes(fill = Reviewer), position = "dodge", stat = "identity")+
+    theme(axis.text.x=element_text(angle=45,hjust=1))+
+    labs(title="Active Critics")
+   
+movies %>%  
+    dplyr::group_by(Movies) %>% 
+    dplyr::summarise(Average_Review=round(mean(Movie_rating,na.rm=TRUE),2)) %>% 
+    arrange(desc(Average_Review)) %>% 
+    ggplot(., aes(x=Movies , Average_Review)) + 
+    geom_bar(aes(fill = Movies), position = "dodge", stat = "identity")+
+    coord_flip()+
+    labs(title="Active Critics Average Rating By Movie")
+
+
+
+
+```
+
+    
