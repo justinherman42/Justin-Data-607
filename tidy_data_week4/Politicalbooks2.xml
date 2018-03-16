@@ -3,6 +3,7 @@
     <Book>
         <Title> Understanding Power,</Title>
         <Author>Noam Chomsky,</Author>
+        <Author>Author B</Author>
         <Publication_Date> 2002,</Publication_Date>
         <Publisher>The New Press,</Publisher>
     </Book>
