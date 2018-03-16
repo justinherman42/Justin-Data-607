@@ -1,5 +1,5 @@
 {"Books":[
-    { "Title":"Understanding Power", "Author":"Noam Chomsky","Publication_Date":"2002","Publisher":"The New Press" },
+    { "Title":"Understanding Power", "Author":"Noam Chomsky","Author_2":"Author B","Publication_Date":"2002","Publisher":"The New Press" },
     { "Title":"Blackwater", "Author":"Jeremy Scahill","Publication_Date":"2008","Publisher":"Nation Books" },
     { "Title":"The Shock Doctrine", "Author":"Naomi Klein","Publication_Date":"2008","Publisher":"Picador" }
     
