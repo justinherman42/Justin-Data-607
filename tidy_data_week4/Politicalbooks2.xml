@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<Political_Books>
+    <Book>
+        <Title> Understanding Power</Title>
+        <Author>Noam Chomsky</Author>
+        <Publication_Date> 2002</Publication_Date>
+        <Publisher>The New Press</Publisher>
+    </Book>
+    <Book>
+        <Title>Blackwater</Title>
+        <Author>Jeremy Scahill</Author>
+        <Publication_Date>2008</Publication_Date>
+        <Publisher>Nation Books</Publisher>
+    </Book>
+    <Book>
+       <Title>The Shock Doctrine</Title>
+        <Author>Naomi Klein</Author>
+        <Publication_Date> 2008</Publication_Date>
+        <Publisher>Picador </Publisher>
+    </Book>
+</Political_Books>
+
+
+
