@@ -1,0 +1,191 @@
+---
+title: "KNN project 4"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    toc: yes
+subtitle:  DATA 606
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries 
+```{r,messages=FALSE,echo=FALSE}
+rm(list=ls())
+
+library(kableExtra)
+library(tm)
+library(plyr)
+library(class)
+library(wordcloud)
+library(knitr)
+library(tidyr)
+library(tidytext)
+library(caret)
+#install.packages('e1071', dependencies=TRUE)
+```
+
+##  [Link with walkthrough guide that I applied](https://www.youtube.com/watch?v=j1V2McKbkLo)
+## Create corpus and clean corpus for wordclouds
+```{r}
+##
+folders <- c("easy_ham","spam")
+pathname <- "C:/Users/justin/Documents/GitHub/Justin-Data-607/week11/"
+
+##Function for cleaning
+cleancorpus <- function(Corpus){
+    corpus.tmp <- tm_map(Corpus,removePunctuation)
+    corpus.tmp <- tm_map(corpus.tmp, removeNumbers)
+    corpus.tmp <-tm_map(corpus.tmp,tolower)
+    corpus.tmp <- tm_map(corpus.tmp, removeWords,c(stopwords("english")))
+    corpus.tmp <- tm_map(corpus.tmp,stripWhitespace)
+    return(corpus.tmp)
+}
+## Function to build Corpus for eventual word clouds
+buildcorp <- function(category,path){
+    s.dir <- sprintf("%s%s",path,category)
+    s.cor <- Corpus(DirSource(directory=s.dir))
+    clean_corpus<- cleancorpus(s.cor)
+    s.tdm <- TermDocumentMatrix(clean_corpus)
+    s.tdm <- removeSparseTerms(s.tdm,.7)
+    
+}
+
+## If loading from github change pathname to local directory where files are extracted
+my_corpus <- lapply(folders,buildcorp, path=pathname)
+
+```
+
+## Display wordcloud for spam and easy_ham
+```{r}
+
+
+##Spam
+m = as.matrix(my_corpus[[1]]) 
+word_freqs = sort(rowSums(m), decreasing=TRUE) 
+head(word_freqs,10)
+dm = data.frame(word=names(word_freqs), freq=word_freqs) 
+layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+par(mar=rep(0, 4))
+plot.new()
+text(x=0.5, y=0.5, "Spam")
+wordcloud(dm$word, dm$freq,max.words = 20, random.order=FALSE, colors=brewer.pal(6, "Dark2"),main="Title") 
+
+##Easy_ham
+m = as.matrix(my_corpus[[2]]) 
+word_freqs = sort(rowSums(m), decreasing=TRUE) 
+head(word_freqs,10)
+dm = data.frame(word=names(word_freqs), freq=word_freqs) 
+layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+par(mar=rep(0, 4))
+plot.new()
+text(x=0.5, y=0.5, "easy_ham")
+wordcloud(dm$word, dm$freq,max.words = 20, random.order=FALSE, colors=brewer.pal(5, "Dark2"),main="Title") 
+
+```
+
+
+## Build a Term Document Matrix for analysis
+```{r}
+
+## Function to build TDM
+buildTDM <- function(category,path){
+    s.dir <- sprintf("%s%s",path,category)
+    s.cor <- Corpus(DirSource(directory=s.dir))
+    s.cor.cl <- cleancorpus(s.cor)
+    s.tdm <- DocumentTermMatrix(s.cor.cl)
+    s.tdm <- removeSparseTerms(s.tdm,.7)
+    result <- list(name=category, tdm=s.tdm)
+}
+##Function to bind two list elements of TDM together mapped with (spam/easyham)
+bindcats<- function(tdm){
+    s.mat <- data.matrix(tdm[["tdm"]])
+    s.df <- as.data.frame(s.mat)
+    s.df <- cbind(s.df, rep(tdm[["name"]],nrow(s.df)))
+    colnames(s.df)[ncol(s.df)] <- "target_category"
+    return(s.df)
+}
+
+##Build TDM
+tdm <- lapply(folders,buildTDM, path=pathname)
+my_dtm <- lapply(tdm,bindcats)
+
+
+##Join list and fill na with 0
+tdm_joined <- do.call(rbind.fill,my_dtm)
+tdm_joined[is.na(tdm_joined)] <- 0
+## Check row count should equal 2551(easy_ham)+501(spam)
+print (dim(tdm_joined))
+```
+
+## Create test/train split and prep for KNN
+```{r}
+
+##Create test/train
+
+train.idx <- sample(nrow(tdm_joined),.7*nrow(tdm_joined),replace = FALSE)
+test.idx <- (1:nrow(tdm_joined))[-train.idx]
+
+## Test my overall sample and training sample to see spam/notspam ratios in each
+round(prop.table(table(tdm_joined$target_category))*100)
+round(prop.table(table(tdm_joined[train.idx,"target_category"]))*100)
+
+
+## Extract target vector and rest of DF for KNN
+tdm_cats <-tdm_joined[,"target_category"] 
+tdm_notcats <- tdm_joined[,!colnames(tdm_joined)%in%"target_category"]
+```
+
+## Run KNN on k vals 1,3,15
+```{r}
+knn_pred <- knn(tdm_notcats[train.idx,],tdm_notcats[test.idx,],tdm_cats[train.idx],k=1)
+knn_pred_2<- knn(tdm_notcats[train.idx,],tdm_notcats[test.idx,],tdm_cats[train.idx],k=3)
+knn_pred_3<- knn(tdm_notcats[train.idx,],tdm_notcats[test.idx,],tdm_cats[train.idx],k=15)
+```
+
+
+
+## Confusion matrices for different K vals
+
+```{r}
+confusion_matrix <-table('Predictions'=knn_pred,"Actual"=tdm_cats[test.idx]) 
+kable(confusion_matrix)
+confusion_matrix_2 <-table('Predictions'=knn_pred_2,"Actual"=tdm_cats[test.idx]) 
+kable(confusion_matrix_2)
+confusion_matrix_3 <-table('Predictions'=knn_pred_3,"Actual"=tdm_cats[test.idx]) 
+kable(confusion_matrix_3)
+
+#k_list <- c(confusion_matrix,confusion_matrix_2,confusion_matrix_3)
+#lapply(k_list,function(x){sum(diag(x))/length(test.idx)*100})
+accuracy_knn <- sum(diag(confusion_matrix))/length(test.idx)*100
+accuracy_knn
+accuracy_knn_2 <- sum(diag(confusion_matrix_2))/length(test.idx)*100
+accuracy_knn_2
+accuracy_knn_3 <- sum(diag(confusion_matrix_3))/length(test.idx)*100
+accuracy_knn_3
+```
+
+
+## Attempt at automated cross validation with multiple K vals
+```{r}
+trControl <- trainControl(method="cv",
+             number=5)
+
+
+fit <- train(target_category~.,
+             method     = "knn",
+             tuneGrid   = expand.grid(k = c(1,3,15,20,30)),
+             trControl  = trControl,
+             metric     = "Accuracy",
+             data       = tdm_joined)
+
+fit
+```
+
+
+
+
+
