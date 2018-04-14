@@ -1,0 +1,96 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+
+---
+title: DATA 606 Data Project Proposal
+author: Justin Herman
+---
+
+### Data Preparation
+
+```{r setup, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(knitr)
+
+sports <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/nfl-fandom/NFL_fandom_data-google_trends.csv",skip=1,header=TRUE, stringsAsFactors = FALSE )
+
+## Data Cleanup- remove % symbol, convert cols to numeric
+sports2 <- as_data_frame(lapply(sports, gsub, pattern='\\%', replacement=''))
+sports_names <- colnames(sports2)[-1]
+sports2[sports_names] <- sapply(sports2[sports_names],as.numeric)
+sports_names
+## get the means of sports categories
+team_means <- lapply(sports2[sports_names],mean)
+## get sd of categories
+col_sd <- sapply(sports2[sports_names], sd, na.rm = TRUE)
+col_sd
+
+
+
+```
+
+
+### Research question 
+
++ Do higher or lower percantages by which people search for the 7 major sports, effect Trumps approval rating.  
+
+### Cases 
+
+- The towns are listed by designated market area (DMA)
+- 207 different cases
+
+
+### Data collection 
+
++ "Google Trends data was derived from comparing 5-year search traffic for the 7 sports leagues we analyzed:""
+
+
+### Type of study 
+
++ Observational
+
+
+### Data Source 
+
+**If you collected the data, state self-collected. If not, provide a citation/link.**
+
+[https://github.com/fivethirtyeight/data/blob/master/nfl-fandom/NFL_fandom_data-google_trends.csv]
+
+
+### Response 
+
+**What is the response variable, and what type is it (numerical/categorical)?**
+
++ Discrete numerical- Trump 2016 Vote percentage
+
+### Explanatory 
+
+**What is the explanatory variable, and what type is it (numerical/categorival)?**
+
++ Discrete numerical-  Pct. Of major sports searches
+
+
+### Relevant summary statistics 
+
+**Provide summary statistics relevant to your research question. For example, if you’re comparing means across groups provide means, SDs, sample sizes of each group. This step requires the use of R, hence a code chunk is provided below. Insert more code chunks as needed.**
+
+```{r} 
+paste("the means of column",sports_names,"is ",team_means," The sd of each column is ",col_sd)
+```
+## Generalizability
++ With an average Trump vote of 54.5, our sample is clearly biased(Trump lost popular vote)
+    + I can show this statistically
++ As an observational Study this will not prove there is a causation between  sports searches and Trump vote  
+
+## Several ideas for Approach
++ Use linear regression to build a possible predictive model
++ Look at each sport individually.  Possibly categorize each column by a set SD and determine if those groupings show statistically signficant differences in approval ratings.   
+
+

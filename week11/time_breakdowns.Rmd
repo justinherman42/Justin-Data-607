@@ -1,0 +1,67 @@
+---
+title: "for chat"
+author: "Justin Herman"
+date: "April 11, 2018"
+output: html_document
+---
+
+## load Libraries
+```{r, message=FALSE, echo=FALSE}
+library(ggplot2)
+library(lubridate)
+library(Scale)
+library(reshape2)
+library(SnowballC)
+library(RColorBrewer)
+library(stringr)
+library(dplyr ) 
+library(tidyverse)
+library(rlang)
+library(RColorBrewer )
+library(ggthemes)
+library(knitr)
+```
+
+
+
+```{r, echo= FALSE}
+    my_data <- read.csv("new_whats_app.csv",stringsAsFactors =FALSE)
+
+
+
+colourCount = length(unique(my_data$name))
+getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+
+
+my_data$time <- as.POSIXlt(my_data$time)
+
+```
+
+
+```{r, echo=FALSE}
+ggplot(my_data[my_data$time$hour >=12 &my_data$time$hour <=15,], aes(x = time$hour, fill = name)) +
+  stat_count(position = "dodge", show.legend = TRUE) +
+  ggtitle("12-4PM conversations per hour") +
+  ylab("# of messages") + xlab("time") +
+  theme(plot.title = element_text(face = "italic"))
+```
+
+
+```{r, echo=FALSE}
+ggplot(my_data[my_data$time$hour >15 &my_data$time$hour <=19,], aes(x = time$hour, fill = name)) +
+  stat_count(position = "dodge", show.legend = TRUE) +
+  ggtitle("4-8PM conversations per hour") +
+  ylab("# of messages") + xlab("time") +
+  theme(plot.title = element_text(face = "italic"))
+```
+
+
+
+```{r, echo=FALSE}
+ggplot(my_data[my_data$time$hour >19 &my_data$time$hour <=24,], aes(x = time$hour, fill = name)) +
+  stat_count(position = "dodge", show.legend = TRUE) +
+  ggtitle("8-12 PM conversations per hour") +
+  ylab("# of messages") + xlab("time") +
+  theme(plot.title = element_text(face = "italic"))
+```
+
