@@ -1,0 +1,95 @@
+---
+title: "Untitled"
+author: "Justin Herman"
+date: "March 15, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+v <- paste('V',c(3,5,7,8), sep="")
+
+
+
+raffle %>% 
+  group_by(v) %>%
+  summarise(val = n())
+
+
+# This doesn't work either
+columns <- paste('V',c(3,5,7,8), sep="")
+columns
+simpleFunction <- function(df,col){
+  require("dplyr")
+  df%>%
+    group_by(col_name) %>%
+    summarise(val = n()) -> data
+  return(data)
+  
+lapply(col_names,simpleFunction())
+
+
+simpleFunction <- function(dataset, col_name){
+  require("dplyr")
+  dataset %>%
+    group_by(col_name) %>%
+    summarise(val = n()) -> data
+  return(data)
+  
+  col_names <- 
+  
+  
+      lapply(col_names,function(x) {
+          raffle %>% 
+            group_by(x) %>%
+            summarise(val = n())
+           })
+  
+  for (x in col_names){
+        raffle %>% 
+        group_by(dataset[x]) %>%
+        summarise(val = n())
+  }
+  joia
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(xlsx)
+library(readxl)
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+Joia
+Joia <- read_excel("AFPNNE.xlsx")
+Joia <- Joia[-1,]
+data_frame(Joia)
+Joia %>% 
+    arrange(Date,Location) %>% 
+    select(Date,Location,everything()) %>% 
+    kable(.)
+
+
+
+
+
+
+```
+

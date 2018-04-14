@@ -1,0 +1,128 @@
+---
+title: "week7"
+author: "Justin Herman"
+date: "March 15, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load in Libraries
++ I chose to just add a fake author called ``author B`` to Understanding Power
+
+```{r,message=FALSE}
+library(knitr)
+library(rvest)
+library(RCurl)
+library(XML)
+library(htmltab)
+library(kableExtra)
+library(tidyverse)
+library(dplyr)
+```
+
+## Load in HTML File
++ Being that I loaded the html as a table, this was very easy to load
++ Should be reproducible as it loads from my github
+```{r}
+url <- "https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Politicalbooks.html"
+my_books<- htmltab(doc = url, which = "/html/body/table")
+kable(my_books)
+
+```
+
+## Load in XML File
++ Using Xmlparse
+    + I initially received alot of errors attempting to load from github, found workarounds on stack overflow
+    + Tidy data 
+```{r}
+fileURL <- "https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Politicalbooks2.xml"
+books_xml <- getURL(fileURL,ssl.verifypeer = FALSE)
+books_xml %>% 
+    xmlParse(.,useInternal = TRUE) %>% 
+    xmlToList(.) %>%  
+    plyr::ldply(., data.frame) %>% 
+    select(-.id) %>%
+    mutate(Co_author=Author.1) %>%
+    select(-Author.1) %>% 
+    kable(.)
+
+#books_xml <- xmlParse(books_xml ,useInternal = TRUE)
+#xL <- xmlToList(books_xml)
+#kable(ldply(xL, data.frame))
+```
+
+## Alternate example of loading in xml
++ Couldn't get this example to work with git hub
++ There are no 2nd authors in this example
++ the df needed to me transposed 
+```{r}
+xml.url <- "file:///C:/Users/justin/Documents/GitHub/Justin-Data-607/tidy_data_week4/Politicalbooks.xml"
+xmlfile <- xmlTreeParse(xml.url)
+class(xmlfile)
+xmltop = xmlRoot(xmlfile)
+print(xmltop)[1:2]
+plantcat <- xmlSApply(xmltop, function(x) xmlSApply(x, xmlValue))
+plantcat_df <- t(as_data_frame(plantcat))
+colnames(plantcat_df) <-c("Book", "Author", "Publication Date","Publisher")
+kable(plantcat_df)
+
+
+```
+
+## Load in JSON file
+```{r}
+library(curl)
+library(rjson)
+library(jsonlite)
+json_file <- 'https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Politicalbooks.json'
+text <- readLines(curl(json_file))
+text %>% 
+    jsonlite::fromJSON(.,flatten = TRUE ) %>% 
+    kable(.)
+    
+
+
+#text
+#dd  <-  as.data.frame(t(matrix(unlist(json_data), nrow=4)))
+#colnames(dd) <- c("Book", "Author", "Publication Date","Publisher")
+#kable(dd)
+```
+
+## 
+```{r}
+# require(RCurl)
+# require(XML)
+# webpage <- getURL("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Politicalbooks.xml")
+# webpage <- readLines(tc <- textConnection(webpage)); close(tc)
+# pagetree <- htmlTreeParse(webpage, error=function(...){}, useInternalNodes = TRUE)
+# x <- xpathSApply(pagetree, "/html/body", xmlValue)  
+# x <- strsplit(x, ",")
+# dd_2  <-  as.data.frame(t(matrix(unlist(x), nrow=4)))
+# colnames(dd_2) <- c("Book", "Author", "Publication Date","Publisher")
+# kable(dd_2)
+# x
+# 
+# 
+# 
+# 
+# require(RCurl)
+# require(XML)
+# webpage <- getURL("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/tidy_data_week4/Politicalbooks2.xml")
+# webpage <- readLines(tc <- textConnection(webpage)); close(tc)
+# pagetree <- htmlTreeParse(webpage, error=function(...){}, useInternalNodes = TRUE)
+# x <- xpathSApply(pagetree, "/html", xmlValue)  
+# x <- strsplit(x, ",")
+# dd_2  <-  as.data.frame(t(matrix(unlist(x), nrow=4)))
+# colnames(dd_2) <- c("Book", "Author", "Publication Date","Publisher")
+# kable(dd_2)
+# 
+# 
+# rm (list=ls())
+
+
+
+
+```

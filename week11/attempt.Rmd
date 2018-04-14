@@ -1,0 +1,150 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load library 
+```{r}
+rm(list=ls())
+library(kableExtra)
+library(tm)
+library(plyr)
+library(class)
+library(wordcloud)
+library(knitr)
+
+
+
+```
+
+
+
+## Create Corpus and clean corpus for Word clouds
+```{r}
+folders <- c("easy_ham","spam")
+pathname <- "C:/Users/justin/Documents/GitHub/Justin-Data-607/week11/"
+
+##Function for cleaning
+cleancorpus <- function(corpus){
+    corpus.tmp <- tm_map(corpus,removePunctuation)
+    corpus.tmp <- tm_map(corpus.tmp, removeNumbers)
+    corpus.tmp <-tm_map(corpus.tmp,tolower)
+    corpus.tmp <- tm_map(corpus.tmp, removeWords, stopwords())
+    corpus.tmp <- tm_map(corpus,stripWhitespace)
+    return(corpus.tmp)
+}
+## Function to build Corpus for eventual word clouds
+buildcorp <- function(category,path){
+    s.dir <- sprintf("%s%s",path,category)
+    s.cor <- Corpus(DirSource(directory=s.dir))
+    clean_corpus<- cleancorpus(s.cor)
+    s.tdm <- TermDocumentMatrix(s.cor)
+    s.tdm <- removeSparseTerms(s.tdm,.7)
+    
+}
+my_corpus <- lapply(folders,buildcorp, path=pathname)
+```
+
+## display word cloud for spam and easy_ham
+```{r}
+
+
+##Spam
+m = as.matrix(my_corpus[[1]]) #we define tdm as matrix
+word_freqs = sort(rowSums(m), decreasing=TRUE) #now we get the word orders in decreasing order
+dm = data.frame(word=names(word_freqs), freq=word_freqs) #we create our data set
+layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+par(mar=rep(0, 4))
+plot.new()
+text(x=0.5, y=0.5, "Spam")
+wordcloud(dm$word, dm$freq,max.words = 50, random.order=FALSE, colors=brewer.pal(8, "Dark2"),main="Title") 
+
+##Easy_ham
+m = as.matrix(my_corpus[[2]]) #we define tdm as matrix
+word_freqs = sort(rowSums(m), decreasing=TRUE) #now we get the word orders in decreasing order
+dm = data.frame(word=names(word_freqs), freq=word_freqs) #we create our data set
+layout(matrix(c(1, 2), nrow=2), heights=c(1, 4))
+par(mar=rep(0, 4))
+plot.new()
+text(x=0.5, y=0.5, "easy_ham")
+wordcloud(dm$word, dm$freq,max.words = 50, random.order=FALSE, colors=brewer.pal(8, "Dark2"),main="Title") 
+
+
+
+```
+
+
+## Build a Term Document Matrix for analysis
+```{r}
+
+## Function to build term document matrix
+buildTDM <- function(category,path){
+    s.dir <- sprintf("%s%s",path,category)
+    s.cor <- Corpus(DirSource(directory=s.dir))
+    s.cor.cl <- cleancorpus(s.cor)
+    s.tdm <- DocumentTermMatrix(s.cor.cl)
+    s.tdm <- removeSparseTerms(s.tdm,.7)
+    result <- list(name=category, tdm=s.tdm)
+}
+##Function to bind two list elements of TDM together
+bindcats<- function(tdm){
+    s.mat <- data.matrix(tdm[["tdm"]])
+    s.df <- as.data.frame(s.mat)
+    s.df <- cbind(s.df, rep(tdm[["name"]],nrow(s.df)))
+    colnames(s.df)[ncol(s.df)] <- "target_category"
+    return(s.df)
+}
+tdm <- lapply(folders,buildTDM, path=pathname)
+my_dtm <- lapply(tdm,bindcats)
+
+
+##Join list and fill na with 0
+tdm_joined <- do.call(rbind.fill,my_dtm)
+tdm_joined[is.na(tdm_joined)] <- 0
+## Check row count should equal 2551(easy_ham)+501(spam)
+nrow(tdm_joined)
+```
+
+## Create test/train split and prep for KNN
+```{r}
+
+##Create test/train
+
+train.idx <- sample(nrow(tdm_joined),.7*nrow(tdm_joined),replace = FALSE)
+test.idx <- (1:nrow(tdm_joined))[-train.idx]
+head(train.idx)
+## Test my overall sample to see spam/notspam
+round(prop.table(table(tdm_joined$target_category))*100)
+## test my train 
+round(prop.table(table(tdm_joined[train.idx,"target_category"]))*100)
+
+
+
+tdm_cats <-tdm_joined[,"target_category"] 
+tdm_notcats <- tdm_joined[,!colnames(tdm_joined)%in%"target_category"]
+
+knn_pred <- knn(tdm_notcats[train.idx,],tdm_notcats[test.idx,],tdm_cats[train.idx],k=1)
+knn_pred_2<- knn(tdm_notcats[train.idx,],tdm_notcats[test.idx,],tdm_cats[train.idx],k=3)
+knn_pred_3<- knn(tdm_notcats[train.idx,],tdm_notcats[test.idx,],tdm_cats[train.idx],k=15)
+```
+
+
+## Test for different K vals
+
+```{r}
+confusion_matrix <-table('Predictions'=knn_pred,"Actual"=tdm_cats[test.idx]) 
+kable(confusion_matrix)
+confusion_matrix_2 <-table('Predictions'=knn_pred_2,"Actual"=tdm_cats[test.idx]) 
+kable(confusion_matrix_2)
+confusion_matrix_3 <-table('Predictions'=knn_pred_3,"Actual"=tdm_cats[test.idx]) 
+kable(confusion_matrix_3)
+
+
+accuracy_knn <- sum(diag(confusion_matrix))/length(test.idx)*100
+accuracy_knn
+
+```

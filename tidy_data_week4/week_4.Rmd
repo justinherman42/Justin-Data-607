@@ -1,0 +1,107 @@
+---
+title: "Untitled"
+author: "Justin Herman"
+date: "February 27, 2018"
+html_document:
+    theme: cerulean
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars, message=FALSE}
+rm (list=ls())
+library(tidyverse)
+library(plyr)
+library(knitr)
+library(kableExtra)
+library(tidyr)
+my_flight <- read.csv("flight_data.txt")
+
+```
+
+## Must address the blank Airline rows
+```{r,message=FALSE}
+kable(my_flight)
+fix_columns <- function (df,col){
+    for (x in seq_along(col)){
+        if (!is.na(col[x])){
+            y <- col[x]
+        }
+        else {
+            col[x] <- y
+        }
+    }
+    df$col <- col
+    return (df$col)
+}
+
+my_flight$Airline <- fix_columns(my_flight,my_flight$Airline)
+kable(my_flight)
+```
+
+## Can i apply this function in the tidyverse instead?
+```{r}
+
+rename_col_by_position <- function(df, position, new_name) {
+  new_name <- enquo(new_name)
+  new_name <- quo_name(new_name)
+  select(df, !! new_name := !! quo(names(df)[[position]]), everything())
+}
+
+my_flight_2 <- as_data_frame(read.csv("flight_data.txt"))
+my_flight_2
+tidy_flight <- my_flight_2 %>% 
+    mutate(Airline=fix_columns(.,.$Airline)) %>% 
+    select(-X) %>% 
+    gather(City,N,3:7) %>% 
+    spread(Arrival,N) %>% 
+    mutate(City=str_replace(City,"\\."," ")) %>%  
+    rename(on_time='on time')
+    #rename_col_by_position(., 4, on_time)
+
+    
+kable(tidy_flight)
+
+
+```
+
++ The tidyverse is impressively concise 
+```{r}
+
+mean_airline_arriveal_stats <-  tidy_flight %>% 
+    select(Airline,delayed,City, on_time) %>% 
+    group_by(Airline) %>% 
+    summarize(mean(delayed),mean(on_time),sum(delayed),sum(on_time))
+mean_airline_arriveal_stats
+
+
+
+#airline_stats <-  
+
+
+delay_by_city <- tidy_flight %>% 
+    mutate(delay_freq=round(delayed/(on_time+delayed)*100,2)) %>% 
+    select(Airline, City, delay_freq) %>% 
+    spread(City,delay_freq)
+    
+
+#city_stats <-
+tidy_flight %>% 
+    group_by(City) %>% 
+    summarize(mean(delayed),max(delayed),min(delayed))
+    
+
+kable(delay_by_city, "html") %>%
+    kable_styling("striped") %>% 
+    add_header_above("Breakdown of percentage of flights delayed by airline/city")
+)
+    #footnote(general = "Breakdown of percentage of flights delayed by airline/city ",
+       
+```
+
+
+.

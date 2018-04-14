@@ -1,0 +1,74 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+##Date Manipulation 
+```{r}
+billboard3 <- billboard2 %>%
+  mutate(
+    week = extract_numeric(week),
+    date = as.Date(date.entered) + 7 * (week - 1)) %>%
+  select(-date.entered)
+#> extract_numeric() is deprecated: please use readr::parse_number() instead
+billboard3
+
+
+```
+
+## how to split using seperate
++ can set new column names and split by value
+```{r}
+library(dplyr)
+library(tidyr)
+df <- data.frame(x = c("1_1", "2_1", "1_3", "4 _1"))
+df
+df_2 <- df %>% separate(x, c("A", "B"),sep=" ")
+df_2
+```
+
+## Gather function
++ takes df makes desired column name, filled with value, and melts a set of columns
+```{r}
+weather2 <- weather %>%
+  gather(day, value, d1:d31, na.rm = TRUE)
+weather2
+
+```
+
+## Spread is opposite of gather
+```{r}
+weather3 %>% spread(element, value)
+```
+
+
+## Mutate Select Arrange
++ turns our alphanu mberic variable into numeric
+```{r}
+weather3 <- weather2 %>% 
+  mutate(day = extract_numeric(day)) %>%
+  select(id, year, month, day, element, value) %>%
+  arrange(id, year, month, day)
+#> extract_numeric() is deprecated: please use readr::parse_number() instead
+weather3
+```
+
+
+
+
+```{r}
+
+dplyr::bind_rows(country_list, .Indicator="G") %>%
+  tidyr::spread(G, Value, fill=0)
+my_vals <- Reduce(intersect, list(unlist(uk),unlist(ukraine),unlist(country_list$Uganda.csv),unlist(country_list$United_states.csv)))
+my_vals
+look_2<- as_data_frame(lapply(look, gsub, pattern="\\[.+]", replacement=''))
+View(look_2)
+
+```
+

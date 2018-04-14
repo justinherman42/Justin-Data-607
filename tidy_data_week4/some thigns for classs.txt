@@ -1,0 +1,8 @@
+https://github.com/gabartomeo/data607-cunysps/blob/master/Project02/pokemon_proj02.csv
+https://www.kaggle.com/rounakbanik/pokemon
+
+
+http://data.un.org/DocumentData.aspx?id=375
+
+
+http://apps.who.int/gho/data/node.country.country-COL?lang=en

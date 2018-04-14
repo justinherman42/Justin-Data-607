@@ -1,0 +1,89 @@
+---
+title: "Tidy_data"
+author: "Justin Herman"
+date: "February 26, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(dplyr)
+diamonds <- ggplot2::diamonds
+str(diamonds2)
+diamonds2 <- diamonds %>% 
+  dplyr::mutate(price_per_carat = price / carat)
+
+pryr::object_size(diamonds)
+#> 3.46 MB
+pryr::object_size(diamonds2)
+#> 3.89 MB
+pryr::object_size(diamonds, diamonds2)
+#> 3.89 MB
+
+
+```
+```{r}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+df <- data.frame(x = c("1_1", "2_1", "1_3", "4 _1"))
+df
+df_2 <- df %>% separate(x, c("A", "B"),sep=" ")
+df_2
+```
+
+```{r}
+devtools::install_github("rstudio/EDAWR")
+library(EDAWR)
+storms
+
+
+
+airline_data<- read_csv("flight_data.txt")
+
+```
+
+```{r}
+ 
+gather(cases,"year","population",2:4)
+
+cases2 <- cases %>%
+  gather(year, population,2:4, na.rm = TRUE)
+cases2
+```
+
+```{r}
+pollution
+pollution_2 <- pollution %>%
+    spread(size,amount)
+pollution_2
+```
+
+```{r}
+# I had to give the table a name...
+t <- c('tidyr', 'reshape2', 'spreadsheets', 'databases')
+a <- c('gather', 'melt', 'pivot', 'fold')
+o <- c('spread', 'cast', 'unpivot', 'unfold')
+tao <- as.data.frame(list(tool=t, action=a, opposite=o))
+tao
+```
+
+```{r}
+install.packages("readstata13")
+
+library(readstata13)
+dat <- read.dta13("TEAdataSTATA.dta")
+library(dplyr)
+dadmom <- read.dta13("http://www.ats.ucla.edu/stat/stata/modules/dadmomw.dta")
+dadmom
+```
+

@@ -1,0 +1,84 @@
+---
+title: "Scrape qb salaries"
+author: "Justin Herman"
+date: "February 28, 2018"
+output:
+  html_document:
+    theme: cerulean
+    highlight: pygments
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+## I need Some help here
++ I scrape a website and  return a list of lists with ints that are currently in character form with special symbols
+```{r,message=FALSE}
+library(stringi)
+library(tidyverse)
+library(rvest)
+library(stringr)
+library(rvest)
+library(purrr)
+
+
+qbs <- lapply(paste0('https://overthecap.com/position/quarterback/',2010:2022,"/"),
+                function(url){
+                    url %>% read_html() %>% 
+                        html_nodes('tr:nth-child(2) .mobile_drop+ td , tr:nth-child(3) .mobile_drop+ td , tr:nth-child(4) .mobile_drop+ td , tr:nth-child(5) .mobile_drop+ td , tr:nth-child(1) .mobile_drop+ td') %>% 
+                        html_text()
+                })
+
+trial_qbs<- qbs 
+trial_qbs[[1]]
+```
+
+## So here was my workaround for the code
++ Gets me desired result but I had to use a double for loop and it unlists my results.  Unlist is easily fixed here, because most lists are the same size, but in general each list represented a year so I want to avoid it
+```{r}
+salaries <-c()     
+
+for (x in trial_qbs){
+    for (y in x){
+        z <- as.integer(str_replace_all(y,"\\$|\\,",""))
+        salaries <- append(salaries,z)
+        }
+    }
+
+str(salaries)
+
+
+
+
+```
+
+
+## This was my 1st attempt which got me completely lost.  
++ What type are these characters and how can I convert them?
++ Looking at it now I'm guessing i needed to somehow iterate over blank_slate before running replace_all or gsub
+    + How can I do that?
+```{r}
+completely_lost <- str_replace_all(trial_qbs,"\\$|,","")
+completely_lost
+for (x in seq_along(trial_qbs)){
+    trial_qbs[[x]] <- gsub("\\$|,","",trial_qbs[[x]])
+}
+trial_qbs
+
+trial_qbs<- qbs 
+
+
+gsub("[^\\d]", "", trial_qbs[[1]], perl=T)
+
+odds <- splited_trial[seq(from=1,to=127,by=2)]
+evens <-splited_trial[seq(from=2,to=127,by=2)]
+vector_ranks <- lapply(evens, `[[`, 2)
+vector_ranks<- unlist(str_split(unlist(str_extract(vector_ranks,":\\s+[[:digit:]]+")),"\\s+"))
+vector_ranks[seq(from=2,to=127,by=2)]
+
+
+```
+

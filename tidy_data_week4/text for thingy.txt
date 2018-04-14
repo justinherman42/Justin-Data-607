@@ -1,0 +1,33 @@
+I don't have a computer sceince background, so if I am grossly over generalizing or mischaracterizing anything please let me know after.
+I chose this topic more out of interest than expertise.  With that said  I want to start with this quote from Hadley Wickham
+
+read quote
+
+So  how can we use functionals to make our future selves lifes easier. Well to start I added some shortcuts here for Rstudio
+I'm not gonna go over them but there is one cool one I found and downloaded that converts comma seperated values into a character vector.  Iknow the qutioation behavior 
+in R can be annoying and I think it savess alot of time to just be able to wite a long commaseperated line and have int converted for you 
+
+
+Now to the heart of the amtter, What is a functional.   Hadley Wickham explains....
+
+
+
+
+Why fucntionals? Uwe's maxim .............Essentially computeres are designed to do teh ehavly lifting, we should let them do their job.  Functionals allow for alot of 
+heavy lifting
+
+
+ What is Vectorization, and how can functionals and vectorization speed up our code?
+
+Here is where we will take a deeper dive into whats going on udner the hood.  R is an interpretive language.  This allows R 
+to do pretty amazing things for the user.like automatically convert two integers into a float when neceesaary.  This does come at a cost.  
+These operations take time becuase they work on an element by element basis.  One way to speed up that process is throguh vectors. 
+Among the elelment by element basis R operates in is a type checking process, When r sees a vector it doesnt have to check the type for every element, 
+it can associate the entire vector as a single type.  
+
+What vectorization and functinals allow us to do, is optmize our usage of groups of functions 
+in R, that are actually written in compiler code(like c+ or other languages)  The apply functionals allow us to take these functions and apply 
+them in a concise loop pattern that does most of the heavy lifting within that compiler language, and sends the results back to R.  
+
+
+### So why do we care and what does this have to do with loops?
