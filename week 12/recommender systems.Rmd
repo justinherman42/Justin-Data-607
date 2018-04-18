@@ -1,0 +1,97 @@
+---
+title: "recommender system"
+author: "Justin Herman"
+date: "April 18, 2018"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    toc: yes
+subtitle:  DATA 607
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Quora
+
+Everyday i receive recommendation emails related to data science and programming from Quora.   I found this [article](https://www.forbes.com/sites/quora/2017/04/19/how-does-quora-use-machine-learning-in-2017/#740580933f3a), which explains the various ways Quora uses ML and recommender systems.   
+
+# Scenario Design 
+
+## 1. Target Users?
+
+People seeking community based answers to a wide range of topics
+
+## 2 Key goals?
+
++ Provide relevant topics for discussion 
++ Connect experts in certain areas to appropriate question topics
++ Correctly rank answers
++ Monetize-Direct ads based on topics of interest to users
+
+## 3 How can I help them acheive their goals?
+
++ It seems as though Quora is rather ahead of the curve when it comes to it's application of Machine Learning and recommender systems.  Perhaps it's one area for growth would be in expanding its user base to other parts of the world       
+
+# Extension of scenario design
++ The industry level scenario design is mostly about providing a better user experience.  While user's can possibly attempt to monetize their answers, i don't believe that is the goal of many users. Therefore, a user level scenario design is not necessary.  
+
+
+
+# Application of recommender systems
+
++ From what I have gathered these are the main topics Quora has invested time into exploring
+
+## 1.  User searches
++ Classify questions by quality and question topic labeling
++ "We use features derived from the question and its context, e.g. the user who asked the question, the locale where the question was asked..." etc."[Same forbes article as earlier](https://www.forbes.com/sites/quora/2017/04/19/how-does-quora-use-machine-learning-in-2017/2/#3e30af802c1c)
+
+## 2. Ranking answers and picking experts
++ Users can ask questions labeled (A2A)- which is a request for expert answers
++ To determine what an expert is, Quora uses a supervised item-wise regression approach. They conducted both online( ab testing) and offline(compare their models "good answers" to generally thought of "good answers")
+    + Definition of a good answer [Link to Ml process used by Quora](https://www.quora.com/careers/software_engineer_nlp)
+        + Answers the question that was asked.
+        + Provides knowledge that is reusable by anyone interested in the question.
+        + Answers that are supported with rationale.
+        + Demonstrates credibility and is factually correct.
+        + Is clear and easy to read. 
+    + Features for testing
+        + Text-based features 
+        + Expertise-based features,  
+        + Author/upvoter history-based features.
+
+
+## 3. Email digests and related question suggestions 
++ Use of multiple models to suggest topics of interest
++ Users are recommended questions after reading topics that other users found interesting.  This is based on:
+    + Topics they like/dislike 
+    + Their expertise in different areas 
+    + Social network properties
+
+
+
+## 4. Ad optimization
++ Ads CTR prediction- how often will people click on the advertisement.
+    + Allows businesses to target users and users to gain access to businesses they are interested in
+        
+# Tools Quora uses 
+
+[Taken directly from link](https://www.forbes.com/sites/quora/2017/04/19/how-does-quora-use-machine-learning-in-2017/2/#3e30af802c1c)
+
++ Logistic Regression
++ Elastic Nets
++ Gradient Boosted Decision Trees
++ Random Forests
++ (Deep) Neural Networks
++ LambdaMART
++ Matrix Factorization (SVD, BPR, Weighted ALS etc.)
++ Vector models and other NLP techniques
++ k-means and other clustering approaches
+
+# Recommendations for Quora
++ Randomization for low level user
+    + It seems the site has many knowledgeable individuals in the field working to improve it's recommender systems.  From my personal experience I know I have not participated in the community much and the recommender system seems to recommend rather monotonous topics.  Perhaps some randomization is needed for users like myself
+
