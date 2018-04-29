@@ -1,0 +1,154 @@
+---
+title: "Rneo4j"
+author: "Justin Herman"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+    toc: yes
+subtitle:  DATA 607
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r, message=FALSE,echo=FALSE}
+rm(list = ls())
+library(dbConnect)
+library(knitr)
+library(kableExtra)
+#require(devtools::install_github("nicolewhite/RNeo4j"))
+library(RNeo4j)
+library(shiny)
+library(miniUI)
+```
+
+## Shiny function to store password
+```{r}
+get_password <- function() {
+ ui <- miniPage(
+   gadgetTitleBar("Please enter your password"),
+   miniContentPanel(
+     passwordInput("password", "")
+   )
+ )
+
+ server <- function(input, output) {
+   observeEvent(input$done, {
+     stopApp(input$password)
+   })
+   observeEvent(input$cancel, {
+     stopApp(stop("No password.", call. = FALSE))
+   })
+ }
+
+ runGadget(ui, server, viewer = dialogViewer("Password", height = 200))
+}
+
+
+
+
+```
+
+
+## Access local MySQL
+
+```{r}
+pw <- get_password()
+db <- dbConnect(MySQL(), user='root',password=pw, host='localhost', dbname='flights')
+dbListTables(db)
+
+```
+
+## Sql code query within R 
++ I ended up only using the flights table, other tables are commented out
++ Write flights2 to csv and reload that csv from github for reproducibility
+```{r}
+
+flights2 <- dbGetQuery(db,"select * from flights;" )
+#airlines <- dbGetQuery(db,"select * from airlines;" )
+#airports <- dbGetQuery(db,"select * from airports;" )
+#planes <- dbGetQuery(db,"select * from planes;" )
+#kable(head(airports))
+#kable(head(airlines))
+kable(head(flights2))
+dim(flights2)
+
+
+## Cut the file down to first 1000 rows from over 300k observations
+flights2<- flights2[1:1000,]
+
+
+## Reduce Airport and airline tables to subsetted data only
+##my_airports <- airports[airports$faa %in% flights$origin | airports$faa %in% flights$dest , ]
+##airlines <- airlines[airlines$carrier %in% flights$carrier,]
+
+write.csv(flights2, file = "Myflights.csv")
+
+```
+#RNeo4j
+
++ Please add your own user name password if needed to graph call
+```{r}
+flights <- read.csv("https://raw.githubusercontent.com/justinherman42/Justin-Data-607/master/week%2013%20nosql/Myflights.csv")
+
+
+graph = startGraph("http://localhost:7474/db/data/", username="neo4j", password="12345")
+clear(graph, input = FALSE)
+
+
+
+```
+
+
+## Make query to display a relationship of departures and arrivals
+```{r}
+
+query = "MERGE (origin:Airport {name:{origin_name}, carrier:{carrier}})
+MERGE (destination:Airport {name:{dest_name},carrier:{carrier}})
+CREATE (origin)<-[:ORIGIN]-(:Flight{number:{flight_num},carrier:{carrier}})-[:DESTINATION]->
+(destination)"
+
+t = newTransaction(graph)
+
+for (i in 1:nrow(flights)) {
+  origin_name = flights[i, ]$origin
+  dest_name = flights[i, ]$dest
+  flight_num = flights[i, ]$flight
+  carrier=flights[i,]$carrier
+  appendCypher(t, 
+               query, 
+               origin_name = origin_name, 
+               dest_name = dest_name, 
+               flight_num = flight_num,
+               carrier = carrier)
+}
+
+commit(t)
+
+my_neo <- cypher(graph, "MATCH (origin:Airport)<-[:ORIGIN]-(f:Flight)-[:DESTINATION]->(dest_Airport:Airport)
+               RETURN origin.name as Airport, f.number as flight,f.carrier as carrier, dest_Airport.name as destination")
+
+kable(head(my_neo,20))
+
+```
+
+
+![Graph of arrival/takeoff with airline ](C:/Users/justin/Desktop/graph4.png)
+
+
+## Relational databases versus neo4j
++ Relational databases 
+     + structured
+     + Computational and memory-intensive
+     + Use of foreign keys to create connections
+     + good for data that doesn't require exploring relationships
+     
++ Neo4j
+    + flexible
+    + Built in relationships
+    + good for data that has many interconnecting relationships that need to be     explored
+    
+    
