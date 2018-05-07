@@ -1,0 +1,427 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    theme: "simplex"
+    highlight: 'pygments'
+    toc: true
+    toc_float: true
+    
+subtitle:  Poker
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
++ **Problem**
+    + Poker stat tracking program(HUD) no longer reads and displays stats automatically from my postgres database 
+
++ **Solution** 
+
+    + Create my own customized one time stat insertion onto poker site
+        
+        + Step 1 Query postgres db to create a dataframe of statistics
+            - This dataframe will store two columns: playername, concatenated string(playerstats)
+        + Step 2 Read in existing XML notes file
+            - File consists of all poker table graphics
+            - Most importantly it contains a notes box ( insert image of notes file)
+        + Step 3 Insert the values of of query postgres database into my pokersite xml file 
+
+<br /> 
+<br />
+<br />
+<br />
+        
+### HH file image        
+![](C:\Users\justin\Desktop\hand history text file.png)
+
+### Hud file image
+![](C:\Users\justin\Desktop\hudexample.png)
+
+### Postgres tables
+
+![](C:\Users\justin\Desktop\postgrestables.png)
+
+### Site note popup
+![](C:\Users\justin\Desktop\notepopup.png)
+
+### XML note file
+![](C:\Users\justin\Desktop\xmlcode.png)
+ 
+## Set up access to postgres and load libraries
+
+```{r,echo=FALSE}
+rm(list=ls())
+library(XML)
+require("RPostgreSQL")
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+#library(data.table)
+library(psych)
+pw <- "password"
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, dbname = "2017_DB",
+                 host = "localhost", port = 5432,
+                 user = "postgres", password = pw)
+
+```
+
+
+### Test connection  
+
+```{r,echo=FALSE}
+
+tryCatch({
+    drv <- dbDriver("PostgreSQL")
+    print("Connecting to database")
+    conn <- con
+    print("Connected!")
+    },
+    error=function(cond) {
+            print("Unable to connect to database.")
+    })
+```
+
+
+## Explore postgres db
+
+
+```{r}
+## Run querys to look thru db 
+query_1 <- dbGetQuery(conn, 'SELECT * FROM information_schema.tables ')
+query_2 <- dbGetQuery(conn, 'SELECT * FROM pg_stat_all_indexes ')
+query_5 <- dbGetQuery(conn, 'SELECT * FROM pg_stat_all_tables ')
+query_3 <- dbGetQuery(conn, 'SELECT * FROM player_notes')
+query_4 <- dbGetQuery(conn, 'SELECT * FROM handhistories limit 10')
+query_8 <- dbGetQuery(conn, 'SELECT * FROM gametypes')
+query_9 <- dbGetQuery(conn, 'SELECT * FROM rakeback')
+# query 6 returns player stats but with only sn
+# query 7 has id and sn 
+player_names_site_id <- dbGetQuery(conn, 'SELECT * FROM players')
+player_stats <- dbGetQuery(conn, 'SELECT * FROM compiledplayerresults limit 1000000')
+
+
+kable(head(player_names_site_id))
+```
+
+### Explain Playername_site id
++ 40k obersvations
++ Foreign key- playerid
+    + No duplicate uses of player id in this table
++ Contains player names(only table that does)
++ Contains poker site id
+    + I play on multiple sites need to filter for siteid=12
+
+```{r}
+kable(head(player_stats))
+```
+
+
+###  Explain player_stats
++ 430k!!! observations
+    + Player id shows up for as many different months a player has played hands
++ Player id foreign key
++ Contains all player statistics(bread and butter)
+
+### Joining both query's to build our df 
++ Filter query 6 for pokersite id 
++ Select necessary columns from query 6
++ Create player_ids vector so that we can filter for common player_id between query's
++ Join df's
+
+
+```{r}
+wsop_players <- player_names_site_id%>% 
+    filter(.,pokersite_id==12) %>% 
+    select(.,c(playername,player_id,cashhands))
+
+## ALl palyers 
+all_players <- player_names_site_id%>% 
+    select(.,c(playername,player_id,cashhands))
+player_ids <- all_players$player_id
+all_player_stats <- player_stats %>% 
+    filter(.,player_id %in% player_ids )
+all_players_db<- merge(all_player_stats,all_players,by="player_id" ,all = TRUE)
+write.csv(all_players_db,"allplayers.csv")
+
+
+
+## extract player ids
+player_ids <- wsop_players$player_id
+
+## filter other df by player ids from last filtered query
+wsop_player_stats <- player_stats %>% 
+    filter(.,player_id %in% player_ids )
+
+## merge dfs on player id
+merged_wsop_db<- merge(wsop_player_stats,wsop_players,by="player_id" ,all = TRUE)
+
+```  
+
+
+## Create final df
++ Grab the stats I need
++ Group by Playername(screenname) to aggreegate by player
++ Build desired stats 
+
+```{r}
+columns_for_analysis <-c('gametype_id',"player_id","totalhands","totalbbswon","totalrakeincents","totalamountwonincents","vpiphands","pfrhands","couldcoldcall","didcoldcall","couldthreebet","didthreebet","couldsqueeze","didsqueeze","facingtwopreflopraisers","calledtwopreflopraisers","raisedtwopreflopraisers","smallblindstealattempted","smallblindstealdefended","smallblindstealreraised",
+"bigblindstealattempted","bigblindstealdefended","bigblindstealreraised","facedthreebetpreflop","foldedtothreebetpreflop","calledthreebetpreflop","raisedthreebetpreflop","facedfourbetpreflop","foldedtofourbetpreflop","calledfourbetpreflop","raisedfourbetpreflop","sawflop","wonhandwhensawflop","sawshowdown","wonshowdown","flopcontinuationbetpossible","flopcontinuationbetmade","turncontinuationbetpossible","turncontinuationbetmade","rivercontinuationbetpossible","rivercontinuationbetmade","facingflopcontinuationbet","foldedtoflopcontinuationbet","calledflopcontinuationbet","raisedflopcontinuationbet","facingturncontinuationbet","foldedtoturncontinuationbet","calledturncontinuationbet","raisedturncontinuationbet","facingrivercontinuationbet","foldedtorivercontinuationbet","calledrivercontinuationbet","raisedrivercontinuationbet","playername","cashhands")    
+              
+## create function to round and sum vectors
+#vector x, vector y, round integer z
+ 
+trans_func <- function(x,y,z){
+     round(sum(x)/sum(y)*100,z)
+ }
+
+
+ my_wsop_finished_db <- merged_wsop_db %>% 
+    select(c(columns_for_analysis)) %>%  
+    group_by(playername) %>% 
+    summarize(
+  vpip           = round(sum(vpiphands)/sum(totalhands)*100,1),
+  pfr            =round(sum(pfrhands)/sum(totalhands)*100,1),
+  total_hands    =  sum(totalhands),
+  money_won      =  sum(totalamountwonincents),
+  rake           =  sum(totalrakeincents),
+  coldcall       =  round(sum(didcoldcall)/sum(couldcoldcall)*100,1),
+  threebet       =  round(sum(didthreebet)/sum(couldthreebet)*100,1),
+  squeeze        =  round(sum(didsqueeze)/sum(couldsqueeze)*100,1),
+  bb_per_100     =  round(sum(totalbbswon)/(sum(totalhands)/100),2),
+  total_rake_100 =  round((sum(totalrakeincents)/100)/sum(totalhands),2),
+  money_won_100  =  round((sum(totalamountwonincents)/100)/(sum(totalhands)/100),2),
+  cc_3b          =      round(sum(calledtwopreflopraisers)/sum(facingtwopreflopraisers)*100,1),
+  cc_4bet        =    round(sum(raisedtwopreflopraisers)/sum(facingtwopreflopraisers)*100,1),
+  def_sb         =     round(sum(smallblindstealdefended)/sum(smallblindstealattempted)*100,1),
+ three_bet_sb    = round(sum(smallblindstealreraised)/sum(smallblindstealattempted)*100,1),
+ defends_bb      = round(sum(bigblindstealdefended)/sum(bigblindstealattempted)*100,1),
+three_bet_from_bb= round(sum(bigblindstealreraised)/sum(bigblindstealattempted)*100,1),
+fold_3_bet       = round(sum(foldedtothreebetpreflop)/sum(facedthreebetpreflop)*100,1),
+four_bet         = round(sum(raisedthreebetpreflop)/sum(facedthreebetpreflop)*100,1),      
+fold_4_bet       = round(sum(foldedtofourbetpreflop)/sum(facedfourbetpreflop)*100,1),
+five_bet=round(sum(raisedfourbetpreflop)/sum(facedfourbetpreflop)*100,1),
+  wwsf           = round(sum(wonhandwhensawflop)/sum(sawflop)*100,1),
+  won_sd         = round(sum(wonshowdown)/sum(sawshowdown)*100,1),
+  flop_cbet      = round(sum(wonshowdown)/sum(sawshowdown)*100,1),
+  turn_cbet      = trans_func(turncontinuationbetmade,turncontinuationbetpossible,1),
+  river_cbet     = trans_func(rivercontinuationbetmade,rivercontinuationbetpossible,1),
+  fold_flob_cbet =trans_func(foldedtoflopcontinuationbet,facingflopcontinuationbet,1),
+  fold_turn_cbet =trans_func(foldedtoturncontinuationbet,facingturncontinuationbet,1),
+  fold_river_cbet=trans_func(foldedtorivercontinuationbet,facingrivercontinuationbet,1),
+  raise_flop_cbet=trans_func(raisedflopcontinuationbet,facingflopcontinuationbet,1),
+  raise_turn_cbet=trans_func(raisedturncontinuationbet,facingturncontinuationbet,1),
+  raise_river_cbet=trans_func(raisedrivercontinuationbet,facingrivercontinuationbet,1),
+  wtsd         =round(sum(sawshowdown)/sum(sawflop)*100,1))
+                  
+
+kable(head(my_wsop_finished_db,10))
+## save to csv
+write.csv(my_wsop_finished_db,"wsop_table.csv")
+
+```
+
+
+## Read in CSV ( need to merge later)
++ Order matters for my notes
++ Desired ouput will be multi line note based on similar stats
+  + 4 lines- 7 stats in first two lines, 6 stats in second two
+  + Set a minimum of 10 hands requirement(explanation needed)
+```{r}
+
+wsop <- read_csv("wsop_table.csv")
+colnames(wsop)
+wsop2 <- wsop %>% 
+  filter(.,total_hands>10) %>% 
+  replace(is.na(.), 0) %>% 
+  select(.,c(playername,
+    vpip,pfr,threebet,fold_3_bet,squeeze,total_hands,
+    def_sb,defends_bb,three_bet_sb,four_bet,fold_4_bet,five_bet,
+    fold_flob_cbet,raise_flop_cbet,fold_turn_cbet,raise_turn_cbet,fold_river_cbet,raise_river_cbet,
+    flop_cbet,turn_cbet,river_cbet,won_sd,cc_3b,cc_4bet,wwsf,wtsd))
+```
+
+
+### Create a function to turn every row(Player),into one giant concatenated string 
++ I want to concatenate my values in the form (colname-col value)
++ I have a 50 character limit in the note file per line so I need to abbreviate column names
++ I want to structure my data across 4 lines- 
+    + Workaround to avoid reg ex. Columns that need to be on a newline were renamed with a new line special character ('&#13;&#10;)
+        + For example 'VPIP' becomes `\r\n;VPIP`
+```{r}
+
+
+rename_col_attempt_db <- wsop2  
+rename_col_attempt_db <- rename_col_attempt_db %>% 
+    rename('\r\nDSB'=def_sb,
+           '\r\nFoldf'=fold_flob_cbet,
+           '\r\nBetf'=flop_cbet,
+           SN=playername,
+           V=vpip,
+           PF=pfr,
+           `3B`=threebet,
+           F3B=fold_3_bet,
+           SQ=squeeze,
+           H=total_hands,
+           DBB=defends_bb,
+           `3BSB`=three_bet_sb,
+           `4B`=four_bet,
+           F4B=fold_4_bet,
+           `5B`=five_bet,
+           RF=raise_flop_cbet,
+           FT=fold_turn_cbet,
+           RT=raise_turn_cbet,
+           FR=fold_river_cbet,
+           RR=raise_river_cbet,
+           BT=turn_cbet,
+           BR=river_cbet,
+           W_sd=won_sd,
+           CC3=cc_3b,
+           CC4=cc_4bet)
+
+my_names <- colnames(rename_col_attempt_db)
+
+## Get rid of whitespace
+trial <- apply(rename_col_attempt_db,2,function(x)gsub('\\s+', '',x))
+
+## Create function to make big string
+trial <- apply(trial,1,function(x){
+   my_string <- do.call(paste, as.list(c(x,sep=",")))
+   my_string <- trimws(my_string, which = c("both", "left", "right"))
+   my_string <- unlist(strsplit(my_string, split=","))
+   my_string <- paste(my_names,my_string,sep="-")
+   my_string <- paste(my_string, collapse = ' ')
+   return (my_string)
+   })
+ 
+#kable(my_names,caption = "abbreviated column names")
+
+
+my_sns <- rename_col_attempt_db$SN
+trial[1:5]
+
+
+```
+
+## Create dataframe consisting of my string(player note) and screen names
++ Screen name column will act as my "Primary key" for eventual merge with XML data
+
+```{r}
+finished_db <- data.frame(my_sns,trial, stringsAsFactors = FALSE)
+
+finished_db[1:5,] %>%
+  kable("html") %>%
+  kable_styling()
+
+```
+
+
+## load in xml notes file
++ 3800 players in that file 
+    
+```{r}
+# xml_path(quick_notes)
+# xml_attrs(quick_notes)
+# sibs <- xml_siblings(quick_notes)
+# quick_notes[17]
+library(xml2)
+
+note_file <- read_xml('C:/Users/justin/Documents/GitHub/Justin-Data-607/final project/Notes.xml')
+head(xml_children(note_file))
+
+## Extract playername as text from xml
+quick_notes <- xml_find_all(note_file, ".//quickNote")
+quick_notes_txt <- xml_text(quick_notes)
+playerNames <- xml_find_all(note_file, ".//playerName")
+playerNames_txt <- xml_text(playerNames)
+
+
+## test how many shared values there are between sqldb and xml
+n=0
+for (x in my_sns){
+    if (x %in% playerNames_txt){
+        n=n+1
+    }
+}
+print(n)
+
+```
+
++ We now know that out of a possible 3882 unique playernames in my XML file, my personal DB contains 3775
+
+## Join xml with sql df
++  The trick here is that I can't change the order of the xml quicknotes, so I must manipulate our sql notes df to match the ordering in our xml 
++ This is why we needed the sql df to contain the screen names as well as our note as we need a shared column to join on
+    + Manipulate colnames to create shared key
+    + Plyr allows us to join on only the rows in the document we request, which gives us a sorted df that maps to screen name order in our xml 
+    
+
+
+```{r}
+
+## print for comparison
+playerNames_txt[1:10]
+finished_db$my_sns[1:10]
+
+## rename columns and join on shared column maintaing xml order
+xml_ordered_names <- data.frame(playerNames_txt,stringsAsFactors = FALSE)
+colnames(xml_ordered_names) <- c("my_sns")
+df_for_xml <- plyr::join(xml_ordered_names,finished_db)
+
+
+df_for_xml[1:5,] %>%
+  kable("html") %>%
+  kable_styling()
+
+
+```
+
+
+## Inserting our postgres notes into quicknotes node of xml
++ https://stackoverflow.com/questions/43286759/how-to-update-xml-attributes-without-using-a-loop-with-the-xml2-r-package
+```{r}
+
+note_file <- read_xml('C:/Users/justin/Documents/GitHub/Justin-Data-607/final project/Notes.xml')
+head(xml_children(note_file))
+
+## Extract playername as text from xml
+quick_notes <- xml_find_all(note_file, ".//quickNote")
+quick_notes_txt <- xml_text(quick_notes)
+playerNames <- xml_find_all(note_file, ".//playerName")
+playerNames_txt <- xml_text(playerNames)
+
+
+# c_nodes           <- xml %>% xml_find_all("//c")
+#  c_db_names        <- c_nodes %>% xml_find_all("@db_name") %>% xml_text    
+
+ xml_text(quick_notes) <- df_for_xml$trial[match(playerNames_txt, df_for_xml$my_sns)]
+
+note_file
+ 
+ 
+ 
+write_xml(note_file, "C:/Users/justin/Documents/mynote6.xml", options = "format")
+
+
+# c_nodes           <- xml %>% xml_find_all("//c")
+# c_db_names        <- c_nodes %>% xml_find_all("@db_name") %>% xml_text    
+# xml_text(c_nodes) <- df$desc[match(c_db_names, df$db_name)]
+
+quick_notes_txt[1:10]
+```
+
+![Final XML](C:\Users\justin\Desktop\updatedxml.png)
+
+
+![Final XML](C:\Users\justin\Desktop\done.png)
+
+
+
+
+
+
+
+
