@@ -1,5 +1,5 @@
 ---
-title: "607_final project- Poker DB note automation "
+title: "607_Final_Project- Poker Database Note Automation "
 author: "Justin Herman"
 output:
   html_document:
