@@ -1,5 +1,6 @@
 ---
-title: "R Notebook"
+title: "607_final project- Poker DB note automation "
+author: "Justin Herman"
 output:
   html_document:
     theme: "simplex"
@@ -7,7 +8,7 @@ output:
     toc: true
     toc_float: true
     
-subtitle:  Poker
+
 ---
 
 ```{r setup, include=FALSE}
